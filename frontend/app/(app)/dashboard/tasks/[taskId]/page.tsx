@@ -136,40 +136,42 @@ export default function TaskDetailsPage() {
   const [showForm, setShowForm] = useState(false);
   const [showResult, setShowResult] = useState(false);
   const [isLeaving, setIsLeaving] = useState(false);
+  const [isAssigning, setIsAssigning] = useState(false);
+
+  const fetchTask = useCallback(async () => {
+    if (!taskId) return;
+    setTasksLoading(true);
+    setTaskError(null);
+    try {
+      const session = await getSession();
+      const token = session?.accessToken ?? accessToken;
+      if (!token) throw new Error('Missing session token. Please sign in again.');
+
+      const response = await fetch(`${API_BASE_URL}/tasks/${taskId}`, {
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      });
+      const payload = (await response.json()) as { success: boolean; message: string; data?: Task };
+      if (!response.ok || !payload.success || !payload.data) throw new Error(payload.message || 'Failed to load task');
+      setTask(payload.data);
+
+      const recordsResponse = await fetch(`${API_BASE_URL}/tasks/${taskId}/records`, {
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      });
+      if (recordsResponse.ok) {
+        const rp = (await recordsResponse.json()) as { success: boolean; data?: { records?: TaskRecord[] } };
+        if (rp.success) setTaskRecords(rp.data?.records ?? []);
+      }
+    } catch (error) {
+      setTask(null);
+      setTaskError(error instanceof Error ? error.message : 'Failed to load task');
+    } finally {
+      setTasksLoading(false);
+    }
+  }, [taskId, accessToken]);
 
   useEffect(() => {
-    const fetchTask = async () => {
-      if (!taskId) return;
-      setTasksLoading(true);
-      setTaskError(null);
-      try {
-        const session = await getSession();
-        const token = session?.accessToken ?? accessToken;
-        if (!token) throw new Error('Missing session token. Please sign in again.');
-
-        const response = await fetch(`${API_BASE_URL}/tasks/${taskId}`, {
-          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        });
-        const payload = (await response.json()) as { success: boolean; message: string; data?: Task };
-        if (!response.ok || !payload.success || !payload.data) throw new Error(payload.message || 'Failed to load task');
-        setTask(payload.data);
-
-        const recordsResponse = await fetch(`${API_BASE_URL}/tasks/${taskId}/records`, {
-          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        });
-        if (recordsResponse.ok) {
-          const rp = (await recordsResponse.json()) as { success: boolean; data?: { records?: TaskRecord[] } };
-          if (rp.success) setTaskRecords(rp.data?.records ?? []);
-        }
-      } catch (error) {
-        setTask(null);
-        setTaskError(error instanceof Error ? error.message : 'Failed to load task');
-      } finally {
-        setTasksLoading(false);
-      }
-    };
     void fetchTask();
-  }, [taskId, accessToken]);
+  }, [fetchTask]);
 
   if (tasksLoading) {
     return (
@@ -209,6 +211,32 @@ export default function TaskDetailsPage() {
         ? `${getApiOrigin()}${activeRecordImagePath.startsWith('/') ? '' : '/'}${activeRecordImagePath}`
         : `${getApiOrigin()}/uploads/${activeRecordImagePath.replace(/^\/+/, '')}`
     : null;
+
+  const assignAndStart = async () => {
+    // If already assigned to this user, just show the form
+    if (task.assignedToId === user?.id) {
+      setShowForm(true);
+      return;
+    }
+    setIsAssigning(true);
+    try {
+      const session = await getSession();
+      const token = session?.accessToken ?? accessToken;
+      if (!token) throw new Error('Missing session token.');
+      const res = await fetch(`${API_BASE_URL}/tasks/${taskId}/assign`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      });
+      const payload = (await res.json()) as { success: boolean; message: string; data?: Task };
+      if (!res.ok || !payload.success) throw new Error(payload.message || 'Failed to claim task');
+      if (payload.data) setTask(payload.data);
+      setShowForm(true);
+    } catch (error) {
+      setTaskError(error instanceof Error ? error.message : 'Failed to claim task');
+    } finally {
+      setIsAssigning(false);
+    }
+  };
 
   const leaveTask = async () => {
     if (!accessToken || !window.confirm('Leave this task? It will return to the available task queue.')) return;
@@ -396,10 +424,11 @@ export default function TaskDetailsPage() {
                   />
                 ) : !showForm ? (
                   <button
-                    onClick={() => setShowForm(true)}
-                    className="btn-primary w-full py-3 text-sm"
+                    onClick={() => void assignAndStart()}
+                    disabled={isAssigning}
+                    className="btn-primary w-full py-3 text-sm disabled:opacity-60"
                   >
-                    Start Labeling
+                    {isAssigning ? 'Claiming task…' : 'Start Labeling'}
                   </button>
                 ) : (
                   <LabelSubmitForm
@@ -411,7 +440,14 @@ export default function TaskDetailsPage() {
                       setShowForm(false);
                       setShowResult(true);
                       void refetchLabels();
-                      setTimeout(() => { setShowResult(false); setShowForm(true); }, 5000);
+                      // Re-fetch task status; only re-show form if task still accepts submissions
+                      setTimeout(() => {
+                        void fetchTask().then(() => {
+                          setShowResult(false);
+                          // setShowForm(true) is intentionally omitted — the updated task
+                          // state drives whether the form re-appears via isAcceptingSubmissions
+                        });
+                      }, 3000);
                     }}
                     onCancel={() => setShowForm(false)}
                   />

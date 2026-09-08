@@ -58,7 +58,7 @@ router.get(
 router.get(
   '/quality-metrics',
   authenticate,
-  authorize(UserRole.ADMIN),
+  authorize(UserRole.ADMIN, UserRole.VALIDATOR),
   analyticsController.getQualityMetrics
 );
 

@@ -152,7 +152,7 @@ export default function PayoutsPage() {
           {requestData ? (
             <div className="mt-4 rounded-xl border border-black/10 bg-white/70 p-4 text-sm">
               <p className="font-semibold">Payment request ({requestData.network})</p>
-              <p className="mt-1 text-muted">Amount: {requestData.amountSOL} SOL</p>
+              <p className="mt-1 text-muted">Amount: {Number(requestData.amountSOL).toFixed(4)} SOL</p>
               <a className="mt-2 block break-all text-xs underline" href={requestData.paymentUrl}>{requestData.paymentUrl}</a>
               <img alt="Payout QR" className="mt-3 h-44 w-44 rounded-lg border border-black/10" src={requestData.qrCode} />
             </div>
@@ -169,7 +169,7 @@ export default function PayoutsPage() {
           {transactions.map((tx) => (
             <div key={tx.id} className="rounded-lg border border-black/10 bg-white/60 p-3 text-sm">
               <p className="font-medium">{tx.status}</p>
-              <p className="text-muted">{tx.amount} SOL</p>
+              <p className="text-muted">{Number(tx.amount).toFixed(4)} SOL</p>
               <p className="text-xs text-muted">{new Date(tx.createdAt).toLocaleString()}</p>
             </div>
           ))}

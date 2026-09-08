@@ -331,8 +331,9 @@ export class DatasetService {
 
   /**
    * Publish dataset and create tasks from records.
+   * Uses createMany for performance — avoids per-row transaction timeouts on large datasets.
    */
-  async publishDataset(datasetId: string, actorId: string, batchSize: number = 100) {
+  async publishDataset(datasetId: string, actorId: string) {
     const dataset = await prisma.dataset.findUnique({
       where: { id: datasetId },
       include: {
@@ -353,30 +354,25 @@ export class DatasetService {
       throw new AppError('Dataset is already published', 400);
     }
 
-    const recordsToPublish = dataset.records.slice(0, batchSize);
+    await prisma.task.createMany({
+      data: dataset.records.map((record) => ({
+        title: `${dataset.name} - Record ${record.recordNumber}`,
+        description: `Label record ${record.recordNumber} from dataset ${dataset.name}`,
+        reward: dataset.rewardPerRecord,
+        requiredLabels: dataset.maxLabelsPerRecord,
+        consensusThreshold: dataset.consensusThreshold,
+        status: 'pending',
+        datasetId: dataset.id,
+        recordId: record.id,
+      })),
+    });
 
-    const tasks = await prisma.$transaction(
-      recordsToPublish.map((record) =>
-        prisma.task.create({
-          data: {
-            title: `${dataset.name} - Record ${record.recordNumber}`,
-            description: `Label record ${record.recordNumber} from dataset ${dataset.name}`,
-            reward: dataset.rewardPerRecord,
-            requiredLabels: dataset.maxLabelsPerRecord,
-            consensusThreshold: dataset.consensusThreshold,
-            status: 'pending',
-            datasetId: dataset.id,
-            recordId: record.id,
-          },
-        })
-      )
-    );
-
-    logger.info(`Dataset published: ${dataset.id} by user ${actorId}; tasks created=${tasks.length}`);
+    const tasksCreated = dataset.records.length;
+    logger.info(`Dataset published: ${dataset.id} by user ${actorId}; tasks created=${tasksCreated}`);
 
     return {
       datasetId: dataset.id,
-      tasksCreated: tasks.length,
+      tasksCreated,
       rewardPerRecord: dataset.rewardPerRecord,
       totalRewardSOL: dataset.totalRewardSOL,
     };

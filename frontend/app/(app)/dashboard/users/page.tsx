@@ -110,7 +110,7 @@ export default function UsersPage() {
                 <td className="py-2 pr-4">{row.role}</td>
                 <td className="py-2 pr-4">{row.tasksCompleted}</td>
                 <td className="py-2 pr-4">{row.accuracyRate?.toFixed?.(2) ?? row.accuracyRate}%</td>
-                <td className="py-2 pr-4">{row.totalEarnings} SOL</td>
+                <td className="py-2 pr-4">{(row.totalEarnings ?? 0).toFixed(4)} SOL</td>
               </tr>
             ))}
           </tbody>
