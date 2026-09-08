@@ -14,19 +14,21 @@ export const DASHBOARD_TASK_CONFIG = {
 
   // Task Status Colors (Tailwind)
   STATUS_COLORS: {
-    pending: 'bg-yellow-100 text-yellow-800',
-    in_progress: 'bg-blue-100 text-blue-800',
-    completed: 'bg-green-100 text-green-800',
-    validated: 'bg-purple-100 text-purple-800',
-    rejected: 'bg-red-100 text-red-800',
+    pending: 'border border-black/10 bg-white/70 text-foreground',
+    in_progress: 'border border-black/15 bg-black/5 text-foreground',
+    labeled: 'border border-black/10 bg-black/[0.04] text-foreground',
+    completed: 'border border-black/8 bg-white/50 text-muted',
+    validated: 'bg-black text-white',
+    rejected: 'border border-black/8 bg-white/40 text-muted',
   } as const,
 
   // Task Status Labels
   STATUS_LABELS: {
     pending: 'Pending',
     in_progress: 'In Progress',
+    labeled: 'Labeled',
     completed: 'Completed',
-    validated: 'Validated',
+    validated: 'Accepted',
     rejected: 'Rejected',
   } as const,
 } as const;

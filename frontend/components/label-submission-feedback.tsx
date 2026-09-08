@@ -1,24 +1,18 @@
 'use client';
 
 import React from 'react';
-import { CheckCircle, AlertCircle, Info, XCircle } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { CheckCircle2, AlertCircle, Info, XCircle, X } from 'lucide-react';
 
 interface SubmissionFeedbackProps {
   status: 'success' | 'error' | 'info' | 'warning';
   title: string;
   message: string;
-  action?: {
-    label: string;
-    onClick: () => void;
-  };
+  action?: { label: string; onClick: () => void };
   onDismiss?: () => void;
   autoClose?: boolean;
 }
 
-/**
- * SubmissionFeedback - Displays feedback for label submissions
- */
+/** SubmissionFeedback — Monochromatic banner for label submission results */
 export function SubmissionFeedback({
   status,
   title,
@@ -29,96 +23,39 @@ export function SubmissionFeedback({
 }: SubmissionFeedbackProps) {
   React.useEffect(() => {
     if (autoClose && status === 'success') {
-      const timer = setTimeout(() => {
-        onDismiss?.();
-      }, 4000);
+      const timer = setTimeout(() => { onDismiss?.(); }, 4000);
       return () => clearTimeout(timer);
     }
   }, [status, autoClose, onDismiss]);
 
-  const statusConfig = {
-    success: {
-      icon: CheckCircle,
-      bg: 'bg-green-50',
-      border: 'border-green-200',
-      title: 'text-green-900',
-      message: 'text-green-700',
-      iconColor: 'text-green-600',
-    },
-    error: {
-      icon: XCircle,
-      bg: 'bg-red-50',
-      border: 'border-red-200',
-      title: 'text-red-900',
-      message: 'text-red-700',
-      iconColor: 'text-red-600',
-    },
-    warning: {
-      icon: AlertCircle,
-      bg: 'bg-yellow-50',
-      border: 'border-yellow-200',
-      title: 'text-yellow-900',
-      message: 'text-yellow-700',
-      iconColor: 'text-yellow-600',
-    },
-    info: {
-      icon: Info,
-      bg: 'bg-blue-50',
-      border: 'border-blue-200',
-      title: 'text-blue-900',
-      message: 'text-blue-700',
-      iconColor: 'text-blue-600',
-    },
-  };
-
-  const config = statusConfig[status];
-  const Icon = config.icon;
+  const icons = { success: CheckCircle2, error: XCircle, warning: AlertCircle, info: Info };
+  const Icon = icons[status];
 
   return (
-    <div className={`flex items-start gap-4 p-4 rounded-lg border ${config.bg} ${config.border}`}>
-      <Icon className={`w-5 h-5 flex-shrink-0 mt-0.5 ${config.iconColor}`} />
+    <div className="flex items-start gap-3 rounded-2xl border border-black/10 bg-white/80 px-4 py-3">
+      <Icon className="size-4 shrink-0 mt-0.5 text-foreground" aria-hidden="true" />
       <div className="flex-1 min-w-0">
-        <p className={`font-semibold text-sm ${config.title}`}>{title}</p>
-        <p className={`text-sm mt-1 ${config.message}`}>{message}</p>
-
+        <p className="text-sm font-semibold">{title}</p>
+        <p className="mt-0.5 text-sm text-muted">{message}</p>
         {action && (
           <button
             onClick={action.onClick}
-            className={`mt-3 text-sm font-medium hover:underline ${config.message}`}
+            className="mt-2 text-xs font-semibold text-foreground underline hover:no-underline"
           >
             {action.label}
           </button>
         )}
       </div>
-
       {onDismiss && (
-        <button
-          onClick={onDismiss}
-          className="flex-shrink-0 text-gray-400 hover:text-gray-600"
-        >
-          <span className="sr-only">Dismiss</span>
-          <svg
-            className="w-4 h-4"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M6 18L18 6M6 6l12 12"
-            />
-          </svg>
+        <button onClick={onDismiss} className="shrink-0 text-muted hover:text-foreground transition" aria-label="Dismiss">
+          <X className="size-4" />
         </button>
       )}
     </div>
   );
 }
 
-/**
- * SubmissionResult - Shows detailed result of label submission
- */
+/** SubmissionResult — Shows detailed result after a successful label submission */
 interface SubmissionResultProps {
   labelValue: string;
   confidence: number;
@@ -126,12 +63,7 @@ interface SubmissionResultProps {
   onContinue?: () => void;
 }
 
-export function SubmissionResult({
-  labelValue,
-  confidence,
-  submittedAt,
-  onContinue,
-}: SubmissionResultProps) {
+export function SubmissionResult({ labelValue, confidence, submittedAt, onContinue }: SubmissionResultProps) {
   return (
     <div className="space-y-4">
       <SubmissionFeedback
@@ -141,113 +73,71 @@ export function SubmissionResult({
         onDismiss={() => onContinue?.()}
       />
 
-      <div className="grid grid-cols-2 gap-4 p-4 bg-gray-50 rounded-lg">
-        <div>
-          <p className="text-xs font-semibold text-gray-600 uppercase">Label</p>
-          <p className="text-lg font-bold text-gray-900 mt-2">{labelValue}</p>
+      <div className="grid grid-cols-2 gap-3">
+        <div className="rounded-2xl border border-black/8 bg-white/60 p-4">
+          <p className="eyebrow text-[0.65rem] text-muted">Label</p>
+          <p className="mt-2 font-mono text-xl font-semibold tracking-[-0.04em] truncate">{labelValue}</p>
         </div>
-        <div>
-          <p className="text-xs font-semibold text-gray-600 uppercase">Confidence</p>
-          <p className="text-lg font-bold text-gray-900 mt-2">{Math.round(confidence * 100)}%</p>
+        <div className="rounded-2xl border border-black/8 bg-white/60 p-4">
+          <p className="eyebrow text-[0.65rem] text-muted">Confidence</p>
+          <p className="mt-2 font-mono text-xl font-semibold tracking-[-0.04em]">{Math.round(confidence * 100)}%</p>
         </div>
       </div>
 
-      <div className="text-xs text-gray-600">
-        Submitted: {new Date(submittedAt).toLocaleString()}
-      </div>
+      <p className="text-xs text-muted">Submitted: {new Date(submittedAt).toLocaleString()}</p>
 
       {onContinue && (
-        <Button onClick={onContinue} className="w-full">
+        <button onClick={onContinue} className="btn-primary w-full py-3 text-sm">
           Continue Labeling
-        </Button>
+        </button>
       )}
     </div>
   );
 }
 
-/**
- * SubmissionError - Shows detailed error information
- */
+/** SubmissionError — Shows a detailed error with retry/cancel actions */
 interface SubmissionErrorProps {
   error: Error | string;
   onRetry?: () => void;
   onCancel?: () => void;
 }
 
-export function SubmissionError({
-  error,
-  onRetry,
-  onCancel,
-}: SubmissionErrorProps) {
+export function SubmissionError({ error, onRetry, onCancel }: SubmissionErrorProps) {
   const errorMessage = typeof error === 'string' ? error : error.message;
-
   return (
     <div className="space-y-4">
-      <SubmissionFeedback
-        status="error"
-        title="Submission Failed"
-        message={errorMessage}
-      />
-
+      <SubmissionFeedback status="error" title="Submission Failed" message={errorMessage} />
       <div className="flex gap-3">
-        {onRetry && (
-          <Button onClick={onRetry} className="flex-1">
-            Retry
-          </Button>
-        )}
-        {onCancel && (
-          <Button onClick={onCancel} variant="outline" className="flex-1">
-            Cancel
-          </Button>
-        )}
+        {onRetry && <button onClick={onRetry} className="btn-primary flex-1 py-2.5 text-sm">Retry</button>}
+        {onCancel && <button onClick={onCancel} className="btn-secondary flex-1 py-2.5 text-sm">Cancel</button>}
       </div>
     </div>
   );
 }
 
-/**
- * ValidationError - Shows form validation errors
- */
-interface ValidationErrorProps {
-  fieldName: string;
-  errorMessage: string;
-}
+/** ValidationError — Inline field validation error */
+interface ValidationErrorProps { fieldName: string; errorMessage: string; }
 
 export function ValidationError({ fieldName, errorMessage }: ValidationErrorProps) {
   return (
-    <div className="flex items-start gap-2 p-3 bg-red-50 border border-red-200 rounded">
-      <AlertCircle className="w-4 h-4 text-red-600 flex-shrink-0 mt-0.5" />
+    <div className="flex items-start gap-2 rounded-xl border border-black/10 bg-white/70 px-3 py-2">
+      <AlertCircle className="size-4 shrink-0 text-foreground mt-0.5" aria-hidden="true" />
       <div>
-        <p className="font-semibold text-sm text-red-900">{fieldName}</p>
-        <p className="text-sm text-red-700">{errorMessage}</p>
+        <p className="text-xs font-semibold">{fieldName}</p>
+        <p className="text-xs text-muted">{errorMessage}</p>
       </div>
     </div>
   );
 }
 
-/**
- * SuccessCheckmark - Animated success indicator
- */
-interface SuccessCheckmarkProps {
-  className?: string;
-}
-
-export function SuccessCheckmark({ className = 'w-16 h-16' }: SuccessCheckmarkProps) {
+/** SuccessCheckmark — Animated monochromatic success indicator */
+export function SuccessCheckmark({ className = 'w-16 h-16' }: { className?: string }) {
   return (
     <div className={`${className} relative`}>
-      <svg
-        viewBox="0 0 100 100"
-        className="w-full h-full text-green-600"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="4"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      >
+      <svg viewBox="0 0 100 100" className="w-full h-full" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round">
         <circle cx="50" cy="50" r="45" />
         <path d="M30 50l15 15 25-25" className="animate-pulse" />
       </svg>
     </div>
   );
 }
-

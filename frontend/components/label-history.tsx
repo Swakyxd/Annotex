@@ -3,8 +3,6 @@
 import React, { useMemo } from 'react';
 import { formatDistanceToNow } from 'date-fns';
 import { TrendingUp, Award, Target, Zap } from 'lucide-react';
-import { Card } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 
 export interface LabelHistoryItem {
   id: string;
@@ -23,217 +21,125 @@ interface LabelHistoryProps {
   onTaskClick?: (taskId: string) => void;
 }
 
-/**
- * LabelHistory - Displays user's label submission history with statistics
- */
-export function LabelHistory({
-  labels,
-  loading = false,
-  onTaskClick,
-}: LabelHistoryProps) {
+/** LabelHistory — Displays user's label submission history with statistics */
+export function LabelHistory({ labels, loading = false, onTaskClick }: LabelHistoryProps) {
   const stats = useMemo(() => {
-    if (!labels.length) {
-      return {
-        totalLabels: 0,
-        averageConfidence: 0,
-        accuracyRate: 0,
-        recentCount: 0,
-      };
-    }
-
+    if (!labels.length) return { totalLabels: 0, averageConfidence: 0, accuracyRate: 0, recentCount: 0 };
     const totalLabels = labels.length;
-    const averageConfidence =
-      labels.reduce((sum, label) => sum + label.confidence, 0) / totalLabels;
-    
+    const averageConfidence = labels.reduce((sum, l) => sum + l.confidence, 0) / totalLabels;
     const accurateLabels = labels.filter((l) => l.isAccurate !== false).length;
     const accuracyRate = (accurateLabels / totalLabels) * 100;
-    
     const recentDate = new Date();
     recentDate.setDate(recentDate.getDate() - 7);
-    const recentCount = labels.filter(
-      (l) => new Date(l.createdAt) > recentDate
-    ).length;
-
-    return {
-      totalLabels,
-      averageConfidence,
-      accuracyRate,
-      recentCount,
-    };
+    const recentCount = labels.filter((l) => new Date(l.createdAt) > recentDate).length;
+    return { totalLabels, averageConfidence, accuracyRate, recentCount };
   }, [labels]);
 
   if (loading) {
     return (
       <div className="space-y-4">
-        <div className="h-32 bg-gray-200 rounded-lg animate-pulse" />
-        <div className="h-96 bg-gray-200 rounded-lg animate-pulse" />
+        <div className="h-28 animate-pulse rounded-[2rem] bg-black/[0.05]" />
+        <div className="h-96 animate-pulse rounded-[2rem] bg-black/[0.05]" />
       </div>
     );
   }
 
+  const statItems = [
+    { label: 'Total Labels', value: stats.totalLabels, icon: Target },
+    { label: 'Avg Confidence', value: `${(stats.averageConfidence * 100).toFixed(0)}%`, icon: Zap },
+    { label: 'Accuracy', value: `${stats.accuracyRate.toFixed(0)}%`, icon: Award },
+    { label: 'This Week', value: stats.recentCount, icon: TrendingUp },
+  ];
+
   return (
-    <div className="space-y-6">
-      {/* Statistics Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* Total Labels */}
-        <Card className="p-4 bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-xs font-semibold text-gray-600 uppercase">Total Labels</p>
-              <p className="text-2xl font-bold text-blue-900 mt-2">
-                {stats.totalLabels}
-              </p>
+    <div className="space-y-5">
+      {/* Stats grid */}
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+        {statItems.map(({ label, value, icon: Icon }) => (
+          <div key={label} className="rounded-[1.75rem] border border-black/8 bg-white/65 p-4">
+            <div className="flex items-center justify-between">
+              <p className="eyebrow text-[0.65rem] text-muted">{label}</p>
+              <Icon className="size-4 text-muted" aria-hidden="true" />
             </div>
-            <Target className="w-8 h-8 text-blue-400" />
+            <p className="mt-3 font-mono text-2xl font-semibold tracking-[-0.04em]">{value}</p>
           </div>
-        </Card>
-
-        {/* Average Confidence */}
-        <Card className="p-4 bg-gradient-to-br from-purple-50 to-purple-100 border-purple-200">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-xs font-semibold text-gray-600 uppercase">Avg Confidence</p>
-              <p className="text-2xl font-bold text-purple-900 mt-2">
-                {(stats.averageConfidence * 100).toFixed(0)}%
-              </p>
-            </div>
-            <Zap className="w-8 h-8 text-purple-400" />
-          </div>
-        </Card>
-
-        {/* Accuracy Rate */}
-        <Card className="p-4 bg-gradient-to-br from-green-50 to-green-100 border-green-200">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-xs font-semibold text-gray-600 uppercase">Accuracy</p>
-              <p className="text-2xl font-bold text-green-900 mt-2">
-                {stats.accuracyRate.toFixed(0)}%
-              </p>
-            </div>
-            <Award className="w-8 h-8 text-green-400" />
-          </div>
-        </Card>
-
-        {/* Recent Activity */}
-        <Card className="p-4 bg-gradient-to-br from-orange-50 to-orange-100 border-orange-200">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-xs font-semibold text-gray-600 uppercase">This Week</p>
-              <p className="text-2xl font-bold text-orange-900 mt-2">
-                {stats.recentCount}
-              </p>
-            </div>
-            <TrendingUp className="w-8 h-8 text-orange-400" />
-          </div>
-        </Card>
+        ))}
       </div>
 
-      {/* Label History Timeline */}
-      <div className="rounded-lg border p-6 space-y-4">
-        <h2 className="text-xl font-semibold">Submission History</h2>
-        
+      {/* History timeline */}
+      <article className="card rounded-[2rem] p-6">
+        <p className="eyebrow text-xs text-muted">Timeline</p>
+        <h2 className="mt-2 font-mono text-2xl font-semibold tracking-[-0.04em]">Submission History</h2>
+
         {labels.length === 0 ? (
-          <div className="text-center py-12">
-            <Target className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-            <p className="text-gray-600">No label submissions yet</p>
-            <p className="text-sm text-gray-500 mt-1">
-              Start by submitting labels to tasks you encounter
-            </p>
+          <div className="mt-6 rounded-3xl border border-dashed border-black/15 p-10 text-center">
+            <Target className="mx-auto size-10 text-muted/40" aria-hidden="true" />
+            <p className="mt-4 font-semibold">No label submissions yet</p>
+            <p className="mt-1 text-sm text-muted">Start by selecting a task from the dashboard.</p>
           </div>
         ) : (
-          <div className="max-h-96 overflow-y-auto space-y-3">
-            {labels.map((label, idx) => (
+          <div className="mt-5 max-h-[30rem] space-y-2 overflow-y-auto pr-1">
+            {labels.map((label) => (
               <div
                 key={label.id}
-                className="flex items-start gap-4 p-4 hover:bg-gray-50 rounded-lg border border-gray-100 transition-colors"
+                className="flex items-start gap-4 rounded-2xl border border-black/8 bg-white/60 px-4 py-3 transition hover:border-black/15"
               >
-                {/* Timeline marker */}
-                <div className="flex flex-col items-center">
-                  <div className="w-3 h-3 rounded-full bg-blue-600" />
-                  {idx !== labels.length - 1 && (
-                    <div className="w-0.5 h-12 bg-gray-200" />
-                  )}
-                </div>
+                {/* Timeline dot */}
+                <div className="mt-1 size-2 shrink-0 rounded-full bg-black/25" />
 
                 {/* Content */}
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="flex-1">
-                      <button
-                        onClick={() => onTaskClick?.(label.taskId)}
-                        className="text-sm font-semibold text-gray-900 hover:text-blue-600 text-left"
-                      >
-                        {label.taskTitle}
-                      </button>
-                      <p className="text-base font-medium text-gray-700 mt-1">
-                        Label: <span className="text-blue-600">{label.value}</span>
-                      </p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-sm text-gray-600">
-                        {formatDistanceToNow(new Date(label.createdAt), {
-                          addSuffix: true,
-                        })}
-                      </p>
-                    </div>
+                  <div className="flex flex-wrap items-start justify-between gap-2">
+                    <button
+                      onClick={() => onTaskClick?.(label.taskId)}
+                      className="text-sm font-semibold text-foreground hover:underline text-left"
+                    >
+                      {label.taskTitle}
+                    </button>
+                    <p className="whitespace-nowrap text-xs text-muted">
+                      {formatDistanceToNow(new Date(label.createdAt), { addSuffix: true })}
+                    </p>
                   </div>
 
-                  {/* Confidence and Feedback */}
-                  <div className="flex items-center gap-3 mt-2">
-                    <div className="flex items-center gap-1">
-                      <div className="text-xs text-gray-600">Confidence:</div>
-                      <div className="w-16 h-1.5 bg-gray-200 rounded-full overflow-hidden">
-                        <div
-                          className={`h-full ${
-                            label.confidence >= 0.8
-                              ? 'bg-green-500'
-                              : label.confidence >= 0.6
-                              ? 'bg-yellow-500'
-                              : 'bg-red-500'
-                          }`}
-                          style={{ width: `${label.confidence * 100}%` }}
-                        />
-                      </div>
-                      <div className="text-xs font-semibold text-gray-900">
-                        {Math.round(label.confidence * 100)}%
-                      </div>
-                    </div>
+                  <p className="mt-1 text-sm text-muted">
+                    Label: <span className="font-semibold text-foreground">{label.value}</span>
+                  </p>
 
+                  {/* Confidence bar */}
+                  <div className="mt-2 flex items-center gap-2">
+                    <p className="text-xs text-muted">Confidence</p>
+                    <div className="w-16 h-1.5 overflow-hidden rounded-full bg-black/8">
+                      <div
+                        className="h-full rounded-full bg-black/50"
+                        style={{ width: `${label.confidence * 100}%` }}
+                      />
+                    </div>
+                    <p className="text-xs font-semibold">{Math.round(label.confidence * 100)}%</p>
                     {label.isAccurate !== undefined && (
-                      <Badge
-                        variant={
-                          label.isAccurate ? 'default' : 'secondary'
-                        }
-                        className={
-                          label.isAccurate
-                            ? 'bg-green-100 text-green-800'
-                            : 'bg-red-100 text-red-800'
-                        }
-                      >
-                        {label.isAccurate ? 'Accurate' : 'Needs Review'}
-                      </Badge>
+                      <span className={`rounded-full px-2 py-0.5 text-[0.65rem] font-bold uppercase tracking-[0.1em] ${
+                        label.isAccurate
+                          ? 'bg-black text-white'
+                          : 'bg-black/8 text-muted'
+                      }`}>
+                        {label.isAccurate ? 'Accurate' : 'Review'}
+                      </span>
                     )}
                   </div>
 
-                  {/* Feedback */}
                   {label.feedback && (
-                    <p className="text-xs text-gray-600 mt-2 italic">
-                      {label.feedback}
-                    </p>
+                    <p className="mt-1 text-xs text-muted italic">{label.feedback}</p>
                   )}
                 </div>
               </div>
             ))}
           </div>
         )}
-      </div>
+      </article>
     </div>
   );
 }
 
-/**
- * PerformanceMetrics - Standalone component for displaying label performance
- */
+/** PerformanceMetrics — Standalone monochromatic metric grid */
 export function PerformanceMetrics({
   totalLabels = 0,
   averageConfidence = 0,
@@ -245,51 +151,24 @@ export function PerformanceMetrics({
   accuracyRate?: number;
   recentCount?: number;
 }) {
+  const items = [
+    { label: 'Total', value: totalLabels, icon: Target },
+    { label: 'Confidence', value: `${(averageConfidence * 100).toFixed(0)}%`, icon: Zap },
+    { label: 'Accuracy', value: `${accuracyRate.toFixed(0)}%`, icon: Award },
+    { label: 'This Week', value: recentCount, icon: TrendingUp },
+  ];
+
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-      <Card className="p-4 bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200">
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-xs font-semibold text-gray-600 uppercase">Total</p>
-            <p className="text-2xl font-bold text-blue-900 mt-2">{totalLabels}</p>
+    <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+      {items.map(({ label, value, icon: Icon }) => (
+        <div key={label} className="rounded-[1.75rem] border border-black/8 bg-white/65 p-4">
+          <div className="flex items-center justify-between">
+            <p className="eyebrow text-[0.65rem] text-muted">{label}</p>
+            <Icon className="size-4 text-muted" aria-hidden="true" />
           </div>
-          <Target className="w-8 h-8 text-blue-400" />
+          <p className="mt-3 font-mono text-2xl font-semibold tracking-[-0.04em]">{value}</p>
         </div>
-      </Card>
-
-      <Card className="p-4 bg-gradient-to-br from-purple-50 to-purple-100 border-purple-200">
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-xs font-semibold text-gray-600 uppercase">Confidence</p>
-            <p className="text-2xl font-bold text-purple-900 mt-2">
-              {(averageConfidence * 100).toFixed(0)}%
-            </p>
-          </div>
-          <Zap className="w-8 h-8 text-purple-400" />
-        </div>
-      </Card>
-
-      <Card className="p-4 bg-gradient-to-br from-green-50 to-green-100 border-green-200">
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-xs font-semibold text-gray-600 uppercase">Accuracy</p>
-            <p className="text-2xl font-bold text-green-900 mt-2">
-              {accuracyRate.toFixed(0)}%
-            </p>
-          </div>
-          <Award className="w-8 h-8 text-green-400" />
-        </div>
-      </Card>
-
-      <Card className="p-4 bg-gradient-to-br from-orange-50 to-orange-100 border-orange-200">
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-xs font-semibold text-gray-600 uppercase">This Week</p>
-            <p className="text-2xl font-bold text-orange-900 mt-2">{recentCount}</p>
-          </div>
-          <TrendingUp className="w-8 h-8 text-orange-400" />
-        </div>
-      </Card>
+      ))}
     </div>
   );
 }

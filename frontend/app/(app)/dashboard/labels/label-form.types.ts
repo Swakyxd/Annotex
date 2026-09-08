@@ -71,11 +71,11 @@ export function getFieldError(errors: LabelFormErrors, field: keyof LabelFormErr
  * Confidence level descriptions for UI display
  */
 export const CONFIDENCE_LEVELS = {
-  VERY_LOW: { min: 0, max: 0.2, label: 'Very Low', color: 'bg-red-100 text-red-800' },
-  LOW: { min: 0.2, max: 0.4, label: 'Low', color: 'bg-orange-100 text-orange-800' },
-  MEDIUM: { min: 0.4, max: 0.6, label: 'Medium', color: 'bg-yellow-100 text-yellow-800' },
-  HIGH: { min: 0.6, max: 0.8, label: 'High', color: 'bg-blue-100 text-blue-800' },
-  VERY_HIGH: { min: 0.8, max: 1, label: 'Very High', color: 'bg-green-100 text-green-800' },
+  VERY_LOW: { min: 0, max: 0.2, label: 'Very Low', color: 'border border-black/10 bg-white/60 text-muted' },
+  LOW: { min: 0.2, max: 0.4, label: 'Low', color: 'border border-black/10 bg-white/60 text-foreground' },
+  MEDIUM: { min: 0.4, max: 0.6, label: 'Medium', color: 'border border-black/15 bg-white/70 text-foreground' },
+  HIGH: { min: 0.6, max: 0.8, label: 'High', color: 'border border-black/20 bg-black/5 text-foreground' },
+  VERY_HIGH: { min: 0.8, max: 1, label: 'Very High', color: 'bg-black text-white' },
 } as const;
 
 /**
