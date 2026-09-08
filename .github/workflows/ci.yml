@@ -1,0 +1,64 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  frontend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run build
+
+  backend:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: annotex
+          POSTGRES_PASSWORD: annotex
+          POSTGRES_DB: annotex_test
+        ports: [5432:5432]
+        options: >-
+          --health-cmd "pg_isready -U annotex -d annotex_test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DATABASE_URL: postgresql://annotex:annotex@localhost:5432/annotex_test?schema=public
+      DIRECT_URL: postgresql://annotex:annotex@localhost:5432/annotex_test?schema=public
+      JWT_SECRET: test-access-secret-not-for-production
+      JWT_REFRESH_SECRET: test-refresh-secret-not-for-production
+      CORS_ORIGIN: http://localhost:3000
+      PROJECT_TREASURY_WALLET: "11111111111111111111111111111111"
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - run: npm ci
+      - run: npm run prisma:deploy
+      - run: npm run lint
+      - run: npm run build
+      - run: npm test -- --runInBand

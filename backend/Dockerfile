@@ -12,7 +12,7 @@ COPY tsconfig.json ./
 COPY prisma.config.ts ./
 COPY prisma ./prisma
 
-RUN npm install
+RUN npm ci
 
 COPY src ./src
 
@@ -31,7 +31,7 @@ ENV DIRECT_URL=${DIRECT_URL}
 COPY package*.json ./
 COPY prisma.config.ts ./
 COPY prisma ./prisma
-RUN npm install --omit=dev
+RUN npm ci --omit=dev
 
 COPY --from=builder /app/dist ./dist
 
