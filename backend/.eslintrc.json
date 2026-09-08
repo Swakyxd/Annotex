@@ -23,5 +23,12 @@
     "prefer-const": "error",
     "no-var": "error"
   },
-  "ignorePatterns": ["dist", "node_modules", "*.js"]
+  "ignorePatterns": [
+    "dist",
+    "node_modules",
+    "*.js",
+    "prisma.config.ts",
+    "src/**/__tests__/**",
+    "src/generated/**"
+  ]
 }
