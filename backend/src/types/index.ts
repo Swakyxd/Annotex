@@ -7,6 +7,7 @@ export enum UserRole {
 export enum TaskStatus {
   PENDING = 'pending',
   IN_PROGRESS = 'in_progress',
+  LABELED = 'labeled',
   COMPLETED = 'completed',
   VALIDATED = 'validated',
   REJECTED = 'rejected',

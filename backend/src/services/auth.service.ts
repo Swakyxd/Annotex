@@ -86,7 +86,7 @@ export class AuthService {
     });
 
     if (!user) {
-      throw new AppError('Invalid credentials', 401);
+      throw new AppError('No account was found for this email address', 401);
     }
 
     if (!user.isActive) {
@@ -97,7 +97,7 @@ export class AuthService {
     const isPasswordValid = await bcrypt.compare(password, user.password);
 
     if (!isPasswordValid) {
-      throw new AppError('Invalid credentials', 401);
+      throw new AppError('The password you entered is incorrect', 401);
     }
 
     logger.info(`User logged in: ${user.email}`);
