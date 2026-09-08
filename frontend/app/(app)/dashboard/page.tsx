@@ -1,6 +1,8 @@
 "use client";
 
-import { FormEvent, useMemo, useState } from "react";
+import { FormEvent, useState } from "react";
+import { BarChart3, CheckCircle2, CircleDollarSign, ClipboardList, RefreshCw, Wallet } from "lucide-react";
+import { useRouter } from "next/navigation";
 
 import { useAuth } from "@/components/providers/auth-provider";
 import { AdminOnly, ContributorOnly, ValidatorOnly } from "@/components/rbac";
@@ -15,6 +17,7 @@ type Task = {
   reward: number;
   requiredLabels: number;
   submittedLabels: number;
+  assignedToId?: string | null;
 };
 
 type Transaction = {
@@ -71,13 +74,12 @@ type ApiEnvelope<T> = {
 
 export default function DashboardPage() {
   const { user, accessToken, isLoading } = useAuth();
+  const router = useRouter();
   const permissions = usePermissions();
 
   const [tasks, setTasks] = useState<Task[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [performance, setPerformance] = useState<UserPerformance | null>(null);
-  const [selectedTaskId, setSelectedTaskId] = useState<string>("");
-  const [labelValue, setLabelValue] = useState<string>("");
   const [walletAddress, setWalletAddress] = useState<string>(user?.walletAddress ?? "");
   const [isBusy, setIsBusy] = useState(false);
   const [feedback, setFeedback] = useState<string>("");
@@ -92,8 +94,6 @@ export default function DashboardPage() {
   const [datasets, setDatasets] = useState<DatasetSummary[]>([]);
 
   const canCallApi = Boolean(accessToken);
-
-  const activeTask = useMemo(() => tasks.find((task) => task.id === selectedTaskId), [tasks, selectedTaskId]);
 
   const request = async <T,>(path: string, init?: RequestInit): Promise<T> => {
     if (!accessToken) {
@@ -157,40 +157,72 @@ export default function DashboardPage() {
     await withFeedback(async () => {
       const data = await request<{ tasks: Task[] }>("/tasks?limit=25");
       setTasks(data.tasks ?? []);
-
-      if (!selectedTaskId && data.tasks?.length) {
-        setSelectedTaskId(data.tasks[0].id);
-      }
     }, "Tasks refreshed from backend.");
   };
 
-  const assignTask = async (taskId: string) => {
-    await withFeedback(async () => {
-      await request(`/tasks/${taskId}/assign`, { method: "POST" });
-      await fetchTasks();
-    }, "Task assigned successfully.");
-  };
-
-  const submitLabel = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-
-    if (!selectedTaskId || !labelValue.trim()) {
-      setFeedback("Select a task and enter a label value.");
+  const openTask = async (taskId: string) => {
+    const task = tasks.find((item) => item.id === taskId);
+    if (!task) {
       return;
     }
 
     await withFeedback(async () => {
-      await request("/labels", {
-        method: "POST",
-        body: JSON.stringify({
-          taskId: selectedTaskId,
-          value: labelValue.trim(),
-          confidence: 1,
-        }),
-      });
-      setLabelValue("");
-      await fetchTasks();
-    }, "Label submitted.");
+      // Only assign when the task is pending; in_progress tasks are already assigned
+      if (task.status === "pending") {
+        await request(`/tasks/${taskId}/assign`, { method: "POST" });
+      }
+      router.push(`/dashboard/tasks/${taskId}`);
+    }, "Task opened.");
+  };
+
+  /** Returns human-readable label + monochromatic classes for a task status */
+  const getTaskStatusDisplay = (status: string): { label: string; badgeClass: string; cardClass: string } => {
+    switch (status) {
+      // Active — full opacity, clearly actionable
+      case "pending":
+        return {
+          label: "Pending",
+          badgeClass: "bg-black/8 text-foreground",
+          cardClass: "border-black/15 bg-white/65",
+        };
+      case "in_progress":
+        return {
+          label: "In Progress",
+          badgeClass: "bg-black/10 text-foreground",
+          cardClass: "border-black/15 bg-white/70",
+        };
+      // Done — all greyed out equally
+      case "labeled":
+        return {
+          label: "Labeled",
+          badgeClass: "bg-black/5 text-black/35",
+          cardClass: "border-black/6 bg-white/30 opacity-45",
+        };
+      case "validated":
+        return {
+          label: "Accepted",
+          badgeClass: "bg-black/5 text-black/35",
+          cardClass: "border-black/6 bg-white/30 opacity-45",
+        };
+      case "rejected":
+        return {
+          label: "Rejected",
+          badgeClass: "bg-black/5 text-black/35",
+          cardClass: "border-black/6 bg-white/30 opacity-45",
+        };
+      case "completed":
+        return {
+          label: "Completed",
+          badgeClass: "bg-black/5 text-black/35",
+          cardClass: "border-black/6 bg-white/30 opacity-45",
+        };
+      default:
+        return {
+          label: status.replace("_", " "),
+          badgeClass: "bg-black/5 text-muted",
+          cardClass: "border-black/8 bg-white/65",
+        };
+    }
   };
 
   const connectWallet = async (event: FormEvent<HTMLFormElement>) => {
@@ -345,9 +377,9 @@ export default function DashboardPage() {
   };
 
   return (
-    <section className="space-y-8">
+    <section className={permissions.isContributor() ? "flex h-[calc(100vh-10rem)] min-h-0 flex-col gap-5 overflow-hidden" : "space-y-8"}>
       {/* Welcome Section */}
-      <div className="card rounded-4xl p-6 md:p-8">
+      {!permissions.isContributor() && <div className="card rounded-4xl p-6 md:p-8">
         <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
           <div className="space-y-3">
             <p className="eyebrow text-sm text-muted">
@@ -368,7 +400,7 @@ export default function DashboardPage() {
             <div className="mt-1 font-mono text-lg font-semibold text-foreground">{user?.role ?? "unknown"}</div>
           </div>
         </div>
-      </div>
+      </div>}
 
       {/* Admin Dashboard */}
       <AdminOnly role={user?.role}>
@@ -646,156 +678,138 @@ export default function DashboardPage() {
 
       {/* Contributor Dashboard */}
       <ContributorOnly role={user?.role}>
-        <div className="space-y-5">
-          {/* Contributor Action Buttons */}
-          <div className="grid gap-4 md:grid-cols-4">
-            <button className="btn-secondary" disabled={!canCallApi || isBusy} onClick={fetchTasks} type="button">
-              Refresh tasks
-            </button>
-            <button className="btn-secondary" disabled={!canCallApi || isBusy} onClick={fetchUserPerformance} type="button">
-              Load performance
-            </button>
-            <button className="btn-secondary" disabled={!canCallApi || isBusy} onClick={fetchPendingPayouts} type="button">
-              Pending earnings
-            </button>
-            <button className="btn-secondary" disabled={!canCallApi || isBusy} onClick={fetchTransactions} type="button">
-              Load transactions
-            </button>
+        <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-hidden">
+          <div className="shrink-0 rounded-[2rem] bg-brand p-5 text-white shadow-[0_20px_44px_rgba(0,0,0,0.18)] md:px-7 md:py-6">
+            <div className="flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
+              <div>
+                <p className="eyebrow text-xs text-white/60">Contributor workbench</p>
+                <h2 className="mt-3 font-mono text-3xl font-semibold tracking-[-0.05em] md:text-4xl">Your next great label starts here.</h2>
+                <p className="mt-3 max-w-2xl text-sm leading-6 text-white/70">Pick a task from the queue, submit precise work, and keep your payout details ready.</p>
+              </div>
+              <button className="rounded-full bg-white px-5 py-3 text-sm font-semibold text-foreground transition hover:bg-white/90 disabled:cursor-not-allowed disabled:opacity-60" disabled={!canCallApi || isBusy} onClick={fetchTasks} type="button">
+                <RefreshCw className={`mr-2 inline-block size-4 ${isBusy ? "animate-spin" : ""}`} aria-hidden="true" />
+                Refresh queue
+              </button>
+            </div>
           </div>
 
-          {feedback ? <div className="rounded-2xl border border-black/10 bg-white/70 px-4 py-3 text-sm">{feedback}</div> : null}
+          <div className="grid shrink-0 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            <div className="rounded-3xl border border-black/8 bg-white/65 p-3"><ClipboardList className="size-4 text-muted" aria-hidden="true" /><p className="mt-3 text-xl font-semibold">{tasks.length}</p><p className="mt-1 text-xs text-muted">Open tasks</p></div>
+            <div className="rounded-3xl border border-black/8 bg-white/65 p-3"><CheckCircle2 className="size-4 text-muted" aria-hidden="true" /><p className="mt-3 text-xl font-semibold">{performance?.statistics?.acceptedLabels ?? "—"}</p><p className="mt-1 text-xs text-muted">Accepted labels</p></div>
+            <div className="rounded-3xl border border-black/8 bg-white/65 p-3"><BarChart3 className="size-4 text-muted" aria-hidden="true" /><p className="mt-3 text-xl font-semibold">{performance?.statistics?.accuracyRate ? `${performance.statistics.accuracyRate}%` : "—"}</p><p className="mt-1 text-xs text-muted">Accuracy rate</p></div>
+            <div className="rounded-3xl border border-black/8 bg-white/65 p-3"><CircleDollarSign className="size-4 text-muted" aria-hidden="true" /><p className="mt-3 text-xl font-semibold">{pendingPayoutSummary?.totalPendingSOL ?? 0} SOL</p><p className="mt-1 text-xs text-muted">Ready for payout</p></div>
+          </div>
 
-          {/* Main Contributor Interface */}
-          <div className="grid gap-5 lg:grid-cols-[1.2fr_0.8fr]">
-            {/* Task Queue */}
-            <article className="card rounded-[1.75rem] p-6">
-              <div className="mb-4 flex items-center justify-between">
-                <h2 className="font-mono text-2xl font-semibold tracking-[-0.04em]">Available tasks</h2>
-                <span className="text-sm text-muted">{tasks.length} available</span>
+          <div className="flex shrink-0 flex-wrap items-center gap-2">
+            <button className="btn-secondary px-4 py-2.5 text-sm" disabled={!canCallApi || isBusy} onClick={fetchUserPerformance} type="button">View performance</button>
+            <button className="btn-secondary px-4 py-2.5 text-sm" disabled={!canCallApi || isBusy} onClick={fetchPendingPayouts} type="button">Check earnings</button>
+            <button className="btn-secondary px-4 py-2.5 text-sm" disabled={!canCallApi || isBusy} onClick={fetchTransactions} type="button">Transaction history</button>
+          </div>
+
+          {feedback ? <div aria-live="polite" className="shrink-0 rounded-2xl border border-black/10 bg-white/70 px-4 py-3 text-sm">{feedback}</div> : null}
+
+          {/* Main content: tasks list + wallet side-by-side, capped in height so it doesn't overflow */}
+          <div className="grid min-h-0 flex-1 gap-5 overflow-hidden xl:grid-cols-[minmax(0,1.35fr)_minmax(22rem,0.55fr)]">
+            <article className="card flex min-h-0 flex-col overflow-hidden rounded-[2rem] p-5 md:p-6">
+              <div className="flex shrink-0 items-start justify-between gap-4">
+                <div>
+                  <p className="eyebrow text-xs text-muted">Task queue</p>
+                  <h2 className="mt-2 font-mono text-2xl font-semibold tracking-[-0.04em]">Available tasks</h2>
+                </div>
+                <span className="rounded-full border border-black/10 bg-white/70 px-3 py-1.5 text-xs font-semibold text-muted">{tasks.length} open</span>
               </div>
-
-              <div className="space-y-3">
-                {tasks.map((task) => (
-                  <div key={task.id} className="rounded-2xl border border-black/10 bg-white/70 p-4">
-                    <div className="flex items-start justify-between gap-4">
-                      <div>
-                        <p className="font-semibold">{task.title}</p>
-                        <p className="mt-1 text-sm text-muted">{task.description}</p>
-                        <p className="mt-2 text-xs text-muted">
-                          Reward: <span className="font-semibold text-foreground">{task.reward}</span> | Labels needed:{" "}
-                          {task.submittedLabels}/{task.requiredLabels}
-                        </p>
-                      </div>
-                      <div className="flex flex-col gap-2">
-                        <button
-                          className="btn-secondary whitespace-nowrap"
-                          disabled={!canCallApi || isBusy}
-                          onClick={() => {
-                            setSelectedTaskId(task.id);
-                          }}
-                          type="button"
-                        >
-                          Select
-                        </button>
-                        <button
-                          className="btn-primary whitespace-nowrap"
-                          disabled={!canCallApi || isBusy}
-                          onClick={() => assignTask(task.id)}
-                          type="button"
-                        >
-                          Join
-                        </button>
+              {/* Scrollable task list — stays within the card, no page overflow */}
+              <div className="mt-5 min-h-0 flex-1 space-y-3 overflow-y-auto pr-1">
+                {tasks.map((task) => {
+                  const progress = task.requiredLabels ? Math.min((task.submittedLabels / task.requiredLabels) * 100, 100) : 0;
+                  const statusDisplay = getTaskStatusDisplay(task.status);
+                  // Allow opening both pending and in_progress tasks
+                  const canOpen = task.status === "pending" || task.status === "in_progress";
+                  return (
+                    <div
+                      key={task.id}
+                      className={`rounded-[1.5rem] border p-4 transition hover:shadow-sm ${
+                        statusDisplay.cardClass
+                      }`}
+                    >
+                      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                        <div className="min-w-0">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <p className="font-semibold">{task.title}</p>
+                            <span className={`rounded-full px-2.5 py-1 text-[0.65rem] font-bold uppercase tracking-[0.12em] ${statusDisplay.badgeClass}`}>
+                              {statusDisplay.label}
+                            </span>
+                          </div>
+                          <p className="mt-2 line-clamp-2 text-sm text-muted">{task.description}</p>
+                          <div className="mt-4 flex items-center gap-3 text-xs">
+                            <span className="font-semibold">{task.reward} SOL reward</span>
+                            <span className="text-muted">{task.submittedLabels} of {task.requiredLabels} labels</span>
+                          </div>
+                          <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-black/8">
+                            <div className="h-full bg-black" style={{ width: `${progress}%` }} />
+                          </div>
+                        </div>
+                        {canOpen && (
+                          <button
+                            className="btn-primary shrink-0 px-4 py-2 text-sm"
+                            disabled={!canCallApi || isBusy}
+                            onClick={() => openTask(task.id)}
+                            type="button"
+                          >
+                            Select task
+                          </button>
+                        )}
                       </div>
                     </div>
+                  );
+                })}
+                {!tasks.length ? (
+                  <div className="rounded-3xl border border-dashed border-black/15 p-8 text-center text-sm text-muted">
+                    Your queue is clear. Refresh to look for newly published tasks.
                   </div>
-                ))}
-
-                {!tasks.length ? <p className="text-sm text-muted">No tasks available. Check back soon!</p> : null}
+                ) : null}
               </div>
             </article>
 
-            {/* Submit Label + Wallet */}
-            <article className="card rounded-[1.75rem] p-6">
-              <h2 className="font-mono text-2xl font-semibold tracking-[-0.04em]">Submit label</h2>
-              <p className="mt-2 text-sm text-muted">Selected: {activeTask?.title ?? "none"}</p>
-
-              <form className="mt-4 space-y-3" onSubmit={submitLabel}>
-                <textarea
-                  className="field min-h-28"
-                  onChange={(event) => setLabelValue(event.target.value)}
-                  placeholder="Enter your label value"
-                  value={labelValue}
-                />
-                <button className="btn-primary w-full" disabled={!canCallApi || isBusy} type="submit">
-                  Submit label
-                </button>
-              </form>
-
-              <hr className="my-6 border-black/10" />
-
-              <h3 className="font-semibold">Wallet address</h3>
-              <form className="mt-3 space-y-3" onSubmit={connectWallet}>
-                <input
-                  className="field"
-                  onChange={(event) => setWalletAddress(event.target.value)}
-                  placeholder="Solana wallet address (base58)"
-                  value={walletAddress}
-                />
-                <button className="btn-secondary w-full" disabled={!canCallApi || isBusy} type="submit">
-                  Save address
-                </button>
-              </form>
-            </article>
+            <div className="flex min-h-0 flex-col">
+              <article className="rounded-[2rem] border border-black/10 bg-white p-5 md:p-6">
+                <div className="flex items-center gap-3">
+                  <span className="rounded-2xl bg-black p-2.5 text-white"><Wallet className="size-5" aria-hidden="true" /></span>
+                  <div><h3 className="font-semibold">Payout wallet</h3><p className="text-xs text-muted">Solana address for earnings</p></div>
+                </div>
+                <form className="mt-5 space-y-3" onSubmit={connectWallet}>
+                  <input className="field text-sm" onChange={(event) => setWalletAddress(event.target.value)} placeholder="Solana wallet address (base58)" value={walletAddress} />
+                  <button className="btn-secondary w-full" disabled={!canCallApi || isBusy} type="submit">Save wallet address</button>
+                </form>
+              </article>
+            </div>
           </div>
 
-          {/* Performance & Earnings */}
-          <div className="grid gap-5 lg:grid-cols-2">
-            {/* Performance Stats */}
-            <article className="card rounded-[1.75rem] p-6">
-              <h2 className="font-mono text-2xl font-semibold tracking-[-0.04em]">Performance</h2>
-              <dl className="mt-4 space-y-2 text-sm">
-                <div className="flex justify-between gap-3">
-                  <dt className="text-muted">Total labels</dt>
-                  <dd className="font-semibold">{performance?.statistics?.totalLabels ?? "-"}</dd>
-                </div>
-                <div className="flex justify-between gap-3">
-                  <dt className="text-muted">Accepted</dt>
-                  <dd className="font-semibold">{performance?.statistics?.acceptedLabels ?? "-"}</dd>
-                </div>
-                <div className="flex justify-between gap-3">
-                  <dt className="text-muted">Accuracy rate</dt>
-                  <dd className="font-semibold">
-                    {performance?.statistics?.accuracyRate ? `${performance.statistics.accuracyRate}%` : "-"}
-                  </dd>
-                </div>
-                <div className="flex justify-between gap-3">
-                  <dt className="text-muted">Avg time/label</dt>
-                  <dd className="font-semibold">{performance?.statistics?.averageTimePerLabel ?? "-"}s</dd>
-                </div>
+          {/* Earnings & Performance — always visible at the bottom, never pushed off-screen */}
+          <div className="grid shrink-0 gap-5 lg:grid-cols-2">
+            <article className="card rounded-[2rem] p-5 md:p-6">
+              <div className="flex items-center justify-between">
+                <div><p className="eyebrow text-xs text-muted">Quality snapshot</p><h2 className="mt-2 font-mono text-2xl font-semibold tracking-[-0.04em]">Performance</h2></div>
+                <BarChart3 className="size-5 text-muted" aria-hidden="true" />
+              </div>
+              <dl className="mt-5 grid grid-cols-2 gap-3">
+                <div className="rounded-2xl bg-black/[0.035] p-4"><dt className="text-xs text-muted">Total labels</dt><dd className="mt-2 text-xl font-semibold">{performance?.statistics?.totalLabels ?? "—"}</dd></div>
+                <div className="rounded-2xl bg-black/[0.035] p-4"><dt className="text-xs text-muted">Avg. time</dt><dd className="mt-2 text-xl font-semibold">{performance?.statistics?.averageTimePerLabel ?? "—"}<span className="ml-1 text-sm font-medium text-muted">sec</span></dd></div>
               </dl>
             </article>
-
-            {/* Earnings & Transactions */}
-            <article className="card rounded-[1.75rem] p-6">
-              <h2 className="font-mono text-2xl font-semibold tracking-[-0.04em]">Earnings</h2>
-              <div className="mt-4 rounded-2xl border border-black/10 bg-white/70 p-4">
-                <p className="text-2xl font-bold text-foreground">{performance?.statistics?.totalEarnings ?? "0"} SOL</p>
-                <p className="mt-1 text-sm text-muted">Total earnings available</p>
-                <p className="mt-2 text-xs text-muted">
-                  Pending payout: {pendingPayoutSummary?.totalPendingSOL ?? 0} SOL ({pendingPayoutSummary?.totalPendingCount ?? 0} records)
-                </p>
+            <article className="card rounded-[2rem] p-5 md:p-6">
+              <div className="flex items-center justify-between">
+                <div><p className="eyebrow text-xs text-muted">Payout activity</p><h2 className="mt-2 font-mono text-2xl font-semibold tracking-[-0.04em]">Earnings</h2></div>
+                <p className="text-xl font-semibold">{performance?.statistics?.totalEarnings ?? 0} SOL</p>
               </div>
-
-              <h3 className="mt-6 font-semibold text-sm">Recent transactions</h3>
-              <div className="mt-3 space-y-2 max-h-40 overflow-y-auto">
-                {transactions.map((transaction) => (
-                  <div key={transaction.id} className="rounded-lg border border-black/10 bg-white/50 p-2 text-xs">
-                    <p className="font-semibold">{transaction.status}</p>
-                    <p className="text-muted">{transaction.amount} SOL</p>
-                    <p className="text-muted">{new Date(transaction.createdAt).toLocaleDateString()}</p>
+              <div className="mt-5 space-y-2">
+                {transactions.slice(0, 3).map((transaction) => (
+                  <div key={transaction.id} className="flex items-center justify-between rounded-2xl border border-black/8 bg-white/60 px-4 py-3 text-sm">
+                    <div><p className="font-semibold capitalize">{transaction.status}</p><p className="mt-0.5 text-xs text-muted">{new Date(transaction.createdAt).toLocaleDateString()}</p></div>
+                    <p className="font-semibold">{transaction.amount} SOL</p>
                   </div>
                 ))}
-                {!transactions.length ? <p className="text-sm text-muted">No transactions yet.</p> : null}
+                {!transactions.length ? <p className="rounded-2xl border border-dashed border-black/15 px-4 py-5 text-center text-sm text-muted">No recent payout activity.</p> : null}
               </div>
             </article>
           </div>
