@@ -1,16 +1,29 @@
 version: 2
 updates:
+  # Security-only updates for frontend npm packages
   - package-ecosystem: npm
     directory: /frontend
     schedule:
       interval: weekly
     open-pull-requests-limit: 5
+    ignore:
+      # Ignore minor/patch version bumps — only open PRs for security fixes
+      - dependency-name: "*"
+        update-types: ["version-update:semver-minor", "version-update:semver-patch"]
+
+  # Security-only updates for backend npm packages
   - package-ecosystem: npm
     directory: /backend
     schedule:
       interval: weekly
     open-pull-requests-limit: 5
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-minor", "version-update:semver-patch"]
+
+  # Keep GitHub Actions up to date (these are low-noise)
   - package-ecosystem: github-actions
     directory: /
     schedule:
       interval: weekly
+    open-pull-requests-limit: 3
