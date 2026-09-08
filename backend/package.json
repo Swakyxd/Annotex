@@ -28,7 +28,6 @@
   "license": "MIT",
   "dependencies": {
     "@mrleebo/prisma-ast": "^0.15.0",
-    "@prisma/adapter-neon": "^7.6.0",
     "@prisma/adapter-pg": "^7.10.0",
     "@prisma/client": "^7.3.0",
     "@solana/pay": "^0.2.6",
@@ -57,7 +56,7 @@
     "reflect-metadata": "^0.1.13",
     "swagger-jsdoc": "^6.2.8",
     "swagger-ui-express": "^5.0.0",
-    "typeorm": "^0.3.17",
+    "prisma": "^7.6.0",
     "winston": "^3.11.0"
   },
   "devDependencies": {
@@ -80,7 +79,6 @@
     "jest": "^29.7.0",
     "nodemon": "^3.0.2",
     "prettier": "^3.1.1",
-    "prisma": "^7.6.0",
     "supertest": "^6.3.3",
     "ts-jest": "^29.1.1",
     "ts-node": "^10.9.2",
