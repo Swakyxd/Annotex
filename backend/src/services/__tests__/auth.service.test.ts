@@ -96,7 +96,14 @@ describe('AuthService', () => {
     });
 
     await expect(service.login(email, 'WrongPassword123')).rejects.toMatchObject({
-      message: 'Invalid credentials',
+      message: 'The password you entered is incorrect',
+      statusCode: 401,
+    });
+  });
+
+  it('login identifies an email address with no account', async () => {
+    await expect(service.login(uniqueEmail('missing'), 'Password123')).rejects.toMatchObject({
+      message: 'No account was found for this email address',
       statusCode: 401,
     });
   });
