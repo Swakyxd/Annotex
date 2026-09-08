@@ -97,4 +97,21 @@ export class TaskController {
 
     res.status(200).json(response);
   });
+
+  /**
+   * Return the current user's task to the available queue
+   */
+  unassignTask = asyncHandler(async (req: Request, res: Response) => {
+    const { id } = req.params;
+    const task = await this.taskService.unassignTask(id, req.userId!);
+
+    const response: ApiResponse = {
+      success: true,
+      message: 'Task returned to the queue',
+      data: task,
+      timestamp: new Date().toISOString(),
+    };
+
+    res.status(200).json(response);
+  });
 }

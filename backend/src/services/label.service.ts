@@ -36,6 +36,10 @@ export class LabelService {
       throw new AppError('Task is not available for labeling', 400);
     }
 
+    if (task.assignedToId !== labelData.contributorId) {
+      throw new AppError('This task is not assigned to you', 403);
+    }
+
     if (task.recordId && labelData.recordId && task.recordId !== labelData.recordId) {
       throw new AppError('Label record does not match task record', 400);
     }
@@ -90,6 +94,7 @@ export class LabelService {
       where: { id: task.id },
       data: {
         submittedLabels: { increment: 1 },
+        status: TaskStatus.LABELED,
       },
       select: {
         id: true,
@@ -176,6 +181,7 @@ export class LabelService {
       where: { id: labelId },
       include: {
         contributor: true,
+        task: true,
       },
     });
 
@@ -192,6 +198,14 @@ export class LabelService {
       },
       include: {
         contributor: true,
+      },
+    });
+
+    await prisma.task.update({
+      where: { id: label.taskId },
+      data: {
+        status: isAccepted ? TaskStatus.VALIDATED : TaskStatus.REJECTED,
+        completedAt: new Date(),
       },
     });
 

@@ -139,4 +139,11 @@ router.post(
   taskController.assignTask
 );
 
+router.delete(
+  '/:id/assign',
+  authenticate,
+  validate([param('id').isUUID()]),
+  taskController.unassignTask
+);
+
 export default router;

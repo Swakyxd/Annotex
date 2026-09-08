@@ -175,6 +175,39 @@ export class TaskService {
   }
 
   /**
+   * Return an in-progress task to the available queue.
+   */
+  async unassignTask(taskId: string, userId: string) {
+    const task = await prisma.task.findUnique({
+      where: { id: taskId },
+    });
+
+    if (!task) {
+      throw new AppError('Task not found', 404);
+    }
+
+    if (task.status !== TaskStatus.IN_PROGRESS || task.assignedToId !== userId) {
+      throw new AppError('Only the assigned contributor can leave this task', 403);
+    }
+
+    const updatedTask = await prisma.task.update({
+      where: { id: taskId },
+      data: {
+        assignedToId: null,
+        status: TaskStatus.PENDING,
+      },
+      include: {
+        dataset: true,
+        assignedTo: true,
+      },
+    });
+
+    logger.info(`Task ${taskId} returned to the queue by user ${userId}`);
+
+    return updatedTask;
+  }
+
+  /**
    * Update task status
    */
   async updateTaskStatus(taskId: string, status: TaskStatus) {
