@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import { Eye, EyeOff } from "lucide-react";
 import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { startTransition, useState } from "react";
@@ -32,6 +32,7 @@ export function AuthForm({ mode }: AuthFormProps) {
   const [form, setForm] = useState<FormState>(defaultState);
   const [error, setError] = useState<string | null>(null);
   const [isPending, setIsPending] = useState(false);
+  const [isPasswordVisible, setIsPasswordVisible] = useState(false);
 
   const isRegister = mode === "register";
 
@@ -56,7 +57,7 @@ export function AuthForm({ mode }: AuthFormProps) {
       });
 
       if (!result || result.error) {
-        setError("Authentication failed. Please check your details and try again.");
+        setError(result?.error || "Authentication failed. Please try again.");
         return;
       }
 
@@ -115,16 +116,26 @@ export function AuthForm({ mode }: AuthFormProps) {
 
       <label className="block space-y-2 text-sm font-medium">
         Password
-        <input
-          autoComplete={isRegister ? "new-password" : "current-password"}
-          className="field"
-          minLength={8}
-          onChange={(event) => updateField("password", event.target.value)}
-          placeholder={isRegister ? "At least 8 characters, mixed case, one number" : "Enter your password"}
-          required
-          type="password"
-          value={form.password}
-        />
+        <span className="relative block">
+          <input
+            autoComplete={isRegister ? "new-password" : "current-password"}
+            className="field pr-12"
+            minLength={8}
+            onChange={(event) => updateField("password", event.target.value)}
+            placeholder={isRegister ? "At least 8 characters, mixed case, one number" : "Enter your password"}
+            required
+            type={isPasswordVisible ? "text" : "password"}
+            value={form.password}
+          />
+          <button
+            aria-label={isPasswordVisible ? "Hide password" : "Show password"}
+            className="absolute inset-y-0 right-0 flex w-12 items-center justify-center text-muted transition-colors hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2"
+            onClick={() => setIsPasswordVisible((visible) => !visible)}
+            type="button"
+          >
+            {isPasswordVisible ? <EyeOff aria-hidden="true" size={18} /> : <Eye aria-hidden="true" size={18} />}
+          </button>
+        </span>
       </label>
 
       {isRegister ? (
@@ -163,12 +174,15 @@ export function AuthForm({ mode }: AuthFormProps) {
         {isPending ? "Working..." : isRegister ? "Create account" : "Sign in"}
       </button>
 
-      <div className="flex items-center justify-between gap-4 text-sm text-muted">
-        <span>{isRegister ? "Accounts go straight into the protected shell after registration." : "Session is managed by secure NextAuth cookies."}</span>
-        <Link className="font-semibold text-brand-deep" href={isRegister ? "/login" : "/register"}>
-          {isRegister ? "Back to login" : "Register"}
-        </Link>
-      </div>
+      {isPending ? (
+        <div aria-live="polite" className="auth-loading-bar" role="status">
+          <span className="sr-only">Signing in…</span>
+        </div>
+      ) : null}
+
+      <p className="text-sm text-muted">
+        {isRegister ? "Accounts go straight into the protected shell after registration." : "Session is managed by secure NextAuth cookies."}
+      </p>
     </form>
   );
 }

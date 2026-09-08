@@ -33,7 +33,7 @@ const navigationByRole: Record<string, NavItem[]> = {
   contributor: [
     { href: "/dashboard", label: "Dashboard", caption: "My workspace", roles: ["contributor"] },
     { href: "/dashboard/tasks", label: "Available Tasks", caption: "Browse & submit labels", roles: ["contributor"] },
-    { href: "/dashboard/my-labels", label: "My Labels", caption: "View submissions", roles: ["contributor"] },
+    { href: "/dashboard/labels", label: "My Labels", caption: "View submissions", roles: ["contributor"] },
     { href: "/dashboard/earnings", label: "Earnings", caption: "View payouts & history", roles: ["contributor"] },
   ],
 };
@@ -80,10 +80,10 @@ export function AppShell({
   };
 
   return (
-    <div className="min-h-screen px-4 py-4 md:px-6 md:py-6">
-      <div className="shell-grid mx-auto max-w-7xl gap-5">
+    <div className="h-screen overflow-hidden px-4 py-4 md:px-6 md:py-6">
+      <div className="shell-grid mx-auto h-full max-w-7xl gap-5">
         {/* Sidebar */}
-        <aside className="card rounded-4xl p-6 md:p-7">
+        <aside className="card overflow-y-auto rounded-4xl p-6 md:p-7">
           <div className="flex h-full flex-col justify-between gap-8">
             {/* Header */}
             <div className="space-y-8">
@@ -98,7 +98,11 @@ export function AppShell({
               {/* Role-aware Navigation */}
               <nav className="space-y-3">
                 {navigation.map((item) => {
-                  const active = pathname === item.href;
+                  // Exact match for /dashboard root; prefix match for all deeper paths
+                  const active =
+                    item.href === '/dashboard'
+                      ? pathname === '/dashboard'
+                      : pathname === item.href || pathname.startsWith(item.href + '/');
                   return (
                     <Link
                       key={item.href}
@@ -107,8 +111,8 @@ export function AppShell({
                       }`}
                       href={item.href}
                     >
-                      <div className="font-semibold">{item.label}</div>
-                      <div className={`text-sm ${active ? "text-white/80" : "text-muted"}`}>{item.caption}</div>
+                      <div className={`font-semibold ${active ? "text-white" : "text-foreground"}`}>{item.label}</div>
+                      <div className={`text-sm ${active ? "text-white/70" : "text-muted"}`}>{item.caption}</div>
                     </Link>
                   );
                 })}
@@ -137,9 +141,9 @@ export function AppShell({
         </aside>
 
         {/* Main Content */}
-        <div className="space-y-5">
+        <div className="flex min-h-0 flex-col gap-5">
           {/* Header */}
-          <header className="card rounded-4xl px-6 py-5 md:px-8">
+          <header className="card shrink-0 rounded-4xl px-6 py-5 md:px-8">
             <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
               <div>
                 <p className="eyebrow text-xs text-muted">Protected workspace</p>
@@ -164,8 +168,8 @@ export function AppShell({
             </div>
           </header>
 
-          {/* Page Content */}
-          <div>{children}</div>
+          {/* Page Content — flex-1 + min-h-0 so pages can fill remaining height and implement their own scrolling */}
+          <div className="flex min-h-0 flex-1 flex-col">{children}</div>
         </div>
       </div>
     </div>

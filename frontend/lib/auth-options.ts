@@ -138,7 +138,10 @@ export const authOptions: NextAuthOptions = {
         const payload = (await response.json()) as ApiResponse<AuthPayload>;
 
         if (!response.ok || !payload.success || !payload.data?.user) {
-          return null;
+          // NextAuth surfaces a thrown credentials-provider error to the client
+          // when `redirect: false` is used, allowing the form to explain what
+          // the backend rejected instead of displaying a generic failure.
+          throw new Error(payload.message || "Authentication failed. Please try again.");
         }
 
         return {

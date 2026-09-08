@@ -7,7 +7,7 @@ export interface Task {
   id: string;
   title: string;
   description: string;
-  status: 'pending' | 'in_progress' | 'completed' | 'validated' | 'rejected';
+  status: 'pending' | 'in_progress' | 'labeled' | 'completed' | 'validated' | 'rejected';
   reward: number;
   requiredLabels: number;
   submittedLabels: number;
@@ -72,7 +72,7 @@ export function useTasks(options?: FetchTasksOptions) {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<ApiError | null>(null);
-  const [pagination, setPagination] = useState<TasksResponse['pagination']>(undefined);
+  const [pagination, setPagination] = useState<TasksResponse['data']['pagination'] | undefined>(undefined);
 
   // Keep a stable options object so inline object literals in callers don't trigger request loops.
   const stableOptions = useMemo(

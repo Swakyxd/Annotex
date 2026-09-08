@@ -5,12 +5,9 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useLabelHistory } from '@/hooks/use-labels';
 import { LabelHistory } from '@/components/label-history';
-import { Button } from '@/components/ui/button';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, RefreshCw } from 'lucide-react';
 
-/**
- * LabelHistoryPage - Shows user's label submission history and performance metrics
- */
+/** LabelHistoryPage — Shows user's label submission history and performance metrics */
 export default function LabelHistoryPage() {
   const router = useRouter();
   const { labels, loading, error, refetch } = useLabelHistory();
@@ -29,30 +26,39 @@ export default function LabelHistoryPage() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-4">
         <div className="flex items-center gap-4">
-          <Link href="/dashboard">
-            <Button variant="outline" size="sm">
-              <ArrowLeft className="w-4 h-4" />
-            </Button>
+          <Link
+            href="/dashboard"
+            className="inline-flex items-center justify-center rounded-2xl border border-black/10 bg-white/70 p-2.5 transition hover:bg-white"
+          >
+            <ArrowLeft className="size-4" />
           </Link>
           <div>
-            <h1 className="text-3xl font-bold">Label History</h1>
-            <p className="text-gray-600 mt-1">Track your submissions and performance</p>
+            <p className="eyebrow text-xs text-muted">Contributor</p>
+            <h1 className="font-mono text-2xl font-semibold tracking-[-0.04em] md:text-3xl">Label History</h1>
           </div>
         </div>
+        <button
+          className="btn-secondary px-4 py-2.5 text-sm"
+          onClick={() => void refetch()}
+          type="button"
+        >
+          <RefreshCw className="mr-2 inline-block size-4" />
+          Refresh
+        </button>
       </div>
 
       {/* Error state */}
       {error && (
-        <div className="rounded-lg border border-red-200 bg-red-50 p-6">
-          <p className="text-sm font-semibold text-red-900">Failed to load history</p>
-          <p className="text-sm text-red-700 mt-1">{error.message}</p>
-          <Button onClick={() => void refetch()} variant="outline" className="mt-4">
+        <div className="card rounded-[2rem] p-6">
+          <p className="font-semibold">Failed to load history</p>
+          <p className="mt-1 text-sm text-muted">{error.message}</p>
+          <button className="btn-secondary mt-4 px-4 py-2 text-sm" onClick={() => void refetch()} type="button">
             Retry
-          </Button>
+          </button>
         </div>
       )}
 

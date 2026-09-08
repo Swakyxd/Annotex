@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
 
 export default function LabelsPage() {
-  redirect("/dashboard/review");
+  redirect("/dashboard/labels/history");
 }
