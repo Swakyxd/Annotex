@@ -73,11 +73,12 @@ export default function AnalyticsPage() {
     setFeedback("");
 
     try {
-      if (user?.role === "admin") {
-        const [dashboardData, qualityData] = await Promise.all([
-          request<DashboardStats>("/analytics/dashboard"),
+      if (user?.role === "admin" || user?.role === "validator") {
+        const promises: [Promise<DashboardStats> | null, Promise<QualityMetrics>] = [
+          user.role === "admin" ? request<DashboardStats>("/analytics/dashboard") : Promise.resolve(null as unknown as DashboardStats),
           request<QualityMetrics>("/analytics/quality-metrics"),
-        ]);
+        ];
+        const [dashboardData, qualityData] = await Promise.all(promises);
         setDashboardStats(dashboardData);
         setQuality(qualityData);
         setPerformance(null);
@@ -116,17 +117,19 @@ export default function AnalyticsPage() {
 
       {feedback ? <article className="card rounded-[1.75rem] p-4 text-sm">{feedback}</article> : null}
 
-      {user?.role === "admin" ? (
+      {(user?.role === "admin" || user?.role === "validator") ? (
         <>
-          <article className="card rounded-[1.75rem] p-6">
-            <h2 className="font-semibold">Overview</h2>
-            <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4 text-sm">
-              <div className="rounded-lg border border-black/10 bg-white/60 p-3">Users: {dashboardStats?.overview.totalUsers ?? 0}</div>
-              <div className="rounded-lg border border-black/10 bg-white/60 p-3">Tasks: {dashboardStats?.overview.totalTasks ?? 0}</div>
-              <div className="rounded-lg border border-black/10 bg-white/60 p-3">Datasets: {dashboardStats?.overview.totalDatasets ?? 0}</div>
-              <div className="rounded-lg border border-black/10 bg-white/60 p-3">Accuracy: {dashboardStats?.overview.overallAccuracy ?? "0"}%</div>
-            </div>
-          </article>
+          {user?.role === "admin" && (
+            <article className="card rounded-[1.75rem] p-6">
+              <h2 className="font-semibold">Overview</h2>
+              <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4 text-sm">
+                <div className="rounded-lg border border-black/10 bg-white/60 p-3">Users: {dashboardStats?.overview.totalUsers ?? 0}</div>
+                <div className="rounded-lg border border-black/10 bg-white/60 p-3">Tasks: {dashboardStats?.overview.totalTasks ?? 0}</div>
+                <div className="rounded-lg border border-black/10 bg-white/60 p-3">Datasets: {dashboardStats?.overview.totalDatasets ?? 0}</div>
+                <div className="rounded-lg border border-black/10 bg-white/60 p-3">Accuracy: {dashboardStats?.overview.overallAccuracy ?? "0"}%</div>
+              </div>
+            </article>
+          )}
 
           <article className="card rounded-[1.75rem] p-6">
             <h2 className="font-semibold">Quality metrics</h2>

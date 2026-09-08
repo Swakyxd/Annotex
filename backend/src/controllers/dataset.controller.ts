@@ -96,8 +96,7 @@ export class DatasetController {
    */
   publishDataset = asyncHandler(async (req: Request, res: Response) => {
     const { id } = req.params;
-    const batchSize = req.body.batchSize ? Number(req.body.batchSize) : undefined;
-    const result = await this.datasetService.publishDataset(id, req.userId!, batchSize);
+    const result = await this.datasetService.publishDataset(id, req.userId!);
 
     const response: ApiResponse = {
       success: true,
