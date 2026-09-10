@@ -12,7 +12,7 @@ import { ArrowLeft, Loader2 } from 'lucide-react';
 import { getSession } from 'next-auth/react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
 function getApiOrigin(): string {
   try {

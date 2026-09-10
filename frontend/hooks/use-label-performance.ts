@@ -28,6 +28,7 @@ export function useLabelCache(config: LabelCacheConfig = {}) {
   const { maxSize = 100, ttl = 5 * 60 * 1000 } = config; // Default 5 minutes TTL
   
   const cacheRef = useRef<Map<string, CacheEntry<Label[]>>>(new Map());
+  const [cacheSize, setCacheSize] = useState(0);
   const [cacheHit, setCacheHit] = useState(0);
   const [cacheMiss, setCacheMiss] = useState(0);
 
@@ -45,6 +46,7 @@ export function useLabelCache(config: LabelCacheConfig = {}) {
         const firstKey = cacheRef.current.keys().next().value;
         if (firstKey) cacheRef.current.delete(firstKey);
       }
+      setCacheSize(cacheRef.current.size);
     },
     [maxSize, ttl]
   );
@@ -60,6 +62,7 @@ export function useLabelCache(config: LabelCacheConfig = {}) {
     // Check if cache entry has expired
     if (Date.now() > entry.expiresAt) {
       cacheRef.current.delete(key);
+      setCacheSize(cacheRef.current.size);
       setCacheMiss((prev) => prev + 1);
       return null;
     }
@@ -70,20 +73,21 @@ export function useLabelCache(config: LabelCacheConfig = {}) {
 
   const clear = useCallback(() => {
     cacheRef.current.clear();
+    setCacheSize(0);
     setCacheHit(0);
     setCacheMiss(0);
   }, []);
 
   const stats = useMemo(
     () => ({
-      size: cacheRef.current.size,
+      size: cacheSize,
       hits: cacheHit,
       misses: cacheMiss,
       hitRate: cacheHit + cacheMiss > 0 
         ? (cacheHit / (cacheHit + cacheMiss)) * 100 
         : 0,
     }),
-    [cacheHit, cacheMiss]
+    [cacheSize, cacheHit, cacheMiss]
   );
 
   return { get, set, clear, stats };

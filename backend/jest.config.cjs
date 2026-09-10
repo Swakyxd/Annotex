@@ -24,6 +24,8 @@ module.exports = {
   coverageDirectory: 'coverage',
   coverageReporters: ['text', 'lcov', 'html'],
   moduleNameMapper: {
+    '^@solana/web3\\.js$': '<rootDir>/src/__tests__/mocks/solanaWeb3.ts',
+    '^@solana/pay$': '<rootDir>/src/__tests__/mocks/solanaPay.ts',
     '^(\\.{1,2}/.*)\\.js$': '$1',
     '^@/(.*)$': '<rootDir>/src/$1',
     '^@config/(.*)$': '<rootDir>/src/config/$1',
