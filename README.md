@@ -112,32 +112,27 @@ If you want to run services locally:
 
 ## Deployment (Production)
 
-The repository now includes a production stack file at [docker-compose.prod.yml](docker-compose.prod.yml).
+**Deploying to a server? See [DEPLOYMENT.md](DEPLOYMENT.md)** — a step-by-step guide from
+a blank AWS account to a live HTTPS site, plus [deploy/ec2-bootstrap.sh](deploy/ec2-bootstrap.sh),
+which does it in one command.
 
-1. Prepare production environment variables:
+To run the production stack locally against [docker-compose.prod.yml](docker-compose.prod.yml):
 
 ```bash
 cp .env.production.example .env.production
-```
-
-2. Update `.env.production` with real secrets and public domains.
-
-3. Start the production stack:
-
-```bash
+# fill in real secrets, then:
 docker compose --env-file .env.production -f docker-compose.prod.yml up -d --build
-```
-
-4. Verify services:
-
-```bash
 docker compose --env-file .env.production -f docker-compose.prod.yml ps
-docker compose --env-file .env.production -f docker-compose.prod.yml logs -f backend
 ```
 
 Notes:
-- Backend runs Prisma migrations at startup using `prisma migrate deploy`.
+- Backend runs Prisma migrations at startup using `prisma migrate deploy`, which reads
+  `DIRECT_URL` (not `DATABASE_URL`). Both are set in the compose file.
 - Backend refuses to start in production when required env vars are missing or JWT secrets are left on insecure defaults.
+- `NEXT_PUBLIC_API_BASE_URL` is compiled into the frontend bundle at **build** time, so
+  changing it requires a rebuild, not just a restart.
+- The first Admin must be promoted directly in the database — signup cannot grant the
+  admin role. See [DEPLOYMENT.md](DEPLOYMENT.md#part-4--make-yourself-an-admin).
 - Use reverse proxy/TLS (Nginx, Caddy, or a cloud load balancer) for public HTTPS.
 
 ---
