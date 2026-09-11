@@ -6,6 +6,12 @@ COPY package*.json ./
 RUN npm ci
 
 COPY . .
+
+# NEXT_PUBLIC_* is inlined into the client bundle at build time, so this must be
+# a build arg. Passing it only at runtime leaves the browser calling localhost.
+ARG NEXT_PUBLIC_API_BASE_URL
+ENV NEXT_PUBLIC_API_BASE_URL=${NEXT_PUBLIC_API_BASE_URL}
+
 RUN npm run build
 
 FROM node:20-alpine

@@ -14,7 +14,9 @@ services:
       timeout: 5s
       retries: 5
     ports:
-      - "5433:5432"
+      # Loopback only: Nginx proxies from the host, nothing should reach these
+      # directly from the internet even if a security group is widened.
+      - "127.0.0.1:5433:5432"
 
   backend:
     build:
@@ -29,6 +31,10 @@ services:
       PORT: 5000
       API_VERSION: ${API_VERSION:-v1}
       DATABASE_URL: postgresql://${POSTGRES_USER:-annotex}:${POSTGRES_PASSWORD:-annotex}@db:5432/${POSTGRES_DB:-annotex_db}?schema=public
+      # prisma.config.ts resolves the migration datasource from DIRECT_URL, not
+      # DATABASE_URL. Without this, `prisma migrate deploy` uses the placeholder
+      # baked into backend/Dockerfile and the container crash-loops on startup.
+      DIRECT_URL: postgresql://${POSTGRES_USER:-annotex}:${POSTGRES_PASSWORD:-annotex}@db:5432/${POSTGRES_DB:-annotex_db}?schema=public
       DB_HOST: db
       DB_PORT: 5432
       DB_USERNAME: ${POSTGRES_USER:-annotex}
@@ -47,13 +53,19 @@ services:
       LOG_FILE_PATH: logs/
       ALLOW_DEGRADED_STARTUP: "false"
     command: sh -c "npm run prisma:deploy && npm start"
+    volumes:
+      # Uploaded datasets and extracted images are served from here by app.ts.
+      # Without a volume they are destroyed on every `up --build`.
+      - annotex-uploads:/app/uploads
     ports:
-      - "5000:5000"
+      - "127.0.0.1:5000:5000"
 
   frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-http://localhost:5000/api/v1}
     restart: unless-stopped
     depends_on:
       backend:
@@ -65,7 +77,8 @@ services:
       NEXTAUTH_URL: ${NEXTAUTH_URL:-http://localhost:3000}
       NEXTAUTH_SECRET: ${NEXTAUTH_SECRET}
     ports:
-      - "3000:3000"
+      - "127.0.0.1:3000:3000"
 
 volumes:
   annotex-postgres-data:
+  annotex-uploads:
