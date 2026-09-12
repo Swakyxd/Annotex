@@ -1,5 +1,5 @@
 import { prisma } from '../config/prisma.js';
-import { TaskStatus } from '../types/index.js';
+import { TaskStatus, UserRole } from '../types/index.js';
 
 export class AnalyticsService {
   /**
@@ -76,13 +76,11 @@ export class AnalyticsService {
       where: { contributorId: userId },
     });
 
-    const acceptedLabels = await prisma.label.count({
-      where: { contributorId: userId, isAccepted: true },
-    });
-
-    const rejectedLabels = await prisma.label.count({
-      where: { contributorId: userId, isRejected: true },
-    });
+    const [acceptedLabels, rejectedLabels] = await Promise.all([
+      prisma.label.count({ where: { contributorId: userId, isAccepted: true } }),
+      prisma.label.count({ where: { contributorId: userId, isRejected: true } }),
+    ]);
+    const reviewedLabels = acceptedLabels + rejectedLabels;
 
     // Average time spent per label
     const avgTimeResult = await prisma.label.aggregate({
@@ -112,7 +110,7 @@ export class AnalyticsService {
         totalLabels,
         acceptedLabels,
         rejectedLabels,
-        accuracyRate: totalLabels > 0 ? ((acceptedLabels / totalLabels) * 100).toFixed(2) : '0',
+        accuracyRate: reviewedLabels > 0 ? ((acceptedLabels / reviewedLabels) * 100).toFixed(1) : 'N/A',
         averageTimePerLabel: avgTimeResult._avg.timeSpentSeconds || 0,
         totalEarnings: user.totalEarnings,
       },
@@ -127,57 +125,90 @@ export class AnalyticsService {
    * Get quality metrics
    */
   async getQualityMetrics() {
-    // Average consensus scores
+    // Validated status is the source of truth for completed validation. The
+    // label-count check previously excluded valid tasks when their labels were
+    // not returned as expected by the relation query.
     const tasks = await prisma.task.findMany({
       where: { status: TaskStatus.VALIDATED },
       include: { labels: true },
     });
 
     let totalConsensusScore = 0;
-    let validatedTasksCount = 0;
+    let consensusTaskCount = 0;
 
     for (const task of tasks) {
-      if (task.labels.length >= task.requiredLabels) {
-        const labelCounts = new Map<string, number>();
-        task.labels.forEach((label) => {
-          const count = labelCounts.get(label.value) || 0;
-          labelCounts.set(label.value, count + 1);
-        });
-
-        let maxCount = 0;
-        labelCounts.forEach((count) => {
-          if (count > maxCount) {
-            maxCount = count;
-          }
-        });
-
-        const consensusScore = maxCount / task.labels.length;
-        totalConsensusScore += consensusScore;
-        validatedTasksCount++;
+      if (task.labels.length === 0) {
+        continue;
       }
+
+      const labelCounts = new Map<string, number>();
+      task.labels.forEach((label) => {
+        labelCounts.set(label.value, (labelCounts.get(label.value) || 0) + 1);
+      });
+
+      const maxCount = Math.max(...labelCounts.values());
+      totalConsensusScore += maxCount / task.labels.length;
+      consensusTaskCount++;
     }
 
     const averageConsensusScore =
-      validatedTasksCount > 0 ? totalConsensusScore / validatedTasksCount : 0;
+      consensusTaskCount > 0 ? totalConsensusScore / consensusTaskCount : 0;
 
-    // Top performers
-    const topPerformers = await prisma.user.findMany({
-      where: { isActive: true },
-      orderBy: { accuracyRate: 'desc' },
-      take: 10,
-      select: {
-        id: true,
-        firstName: true,
-        lastName: true,
-        email: true,
-        accuracyRate: true,
-        tasksCompleted: true,
-      },
-    });
+    const [contributors, submittedCounts, acceptedCounts, reviewedCounts] = await Promise.all([
+      prisma.user.findMany({
+        where: { role: UserRole.CONTRIBUTOR, isActive: true },
+        select: { id: true, firstName: true, lastName: true },
+      }),
+      prisma.label.groupBy({
+        by: ['contributorId'],
+        _count: { _all: true },
+      }),
+      prisma.label.groupBy({
+        by: ['contributorId'],
+        where: { isAccepted: true },
+        _count: { _all: true },
+      }),
+      prisma.label.groupBy({
+        by: ['contributorId'],
+        where: { OR: [{ isAccepted: true }, { isRejected: true }] },
+        _count: { _all: true },
+      }),
+    ]);
+
+    const submittedByContributor = new Map(
+      submittedCounts.map((item) => [item.contributorId, item._count._all])
+    );
+    const acceptedByContributor = new Map(
+      acceptedCounts.map((item) => [item.contributorId, item._count._all])
+    );
+    const reviewedByContributor = new Map(
+      reviewedCounts.map((item) => [item.contributorId, item._count._all])
+    );
+
+    const contributorsWithPerformance = contributors
+      .map((contributor) => {
+        const labelsSubmitted = submittedByContributor.get(contributor.id) || 0;
+        const acceptedLabels = acceptedByContributor.get(contributor.id) || 0;
+        const reviewedLabels = reviewedByContributor.get(contributor.id) || 0;
+
+        return {
+          ...contributor,
+          accuracyRate:
+            reviewedLabels > 0 ? Number(((acceptedLabels / reviewedLabels) * 100).toFixed(1)) : null,
+          tasksCompleted: labelsSubmitted,
+          labelsSubmitted,
+          reviewedLabels,
+        };
+      })
+      .filter((contributor) => contributor.labelsSubmitted > 0);
+    const topPerformers = contributorsWithPerformance
+      .sort((left, right) => (right.accuracyRate ?? -1) - (left.accuracyRate ?? -1))
+      .slice(0, 10);
 
     return {
       averageConsensusScore: averageConsensusScore.toFixed(2),
-      validatedTasks: validatedTasksCount,
+      validatedTasks: tasks.length,
+      activeContributors: contributorsWithPerformance.length,
       topPerformers,
     };
   }

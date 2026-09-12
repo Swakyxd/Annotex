@@ -128,4 +128,12 @@ router.post(
   labelController.rejectLabel
 );
 
+router.post(
+  '/:id/validate',
+  authenticate,
+  authorize(UserRole.ADMIN, UserRole.VALIDATOR),
+  validate([param('id').isUUID()]),
+  labelController.validateLabel
+);
+
 export default router;

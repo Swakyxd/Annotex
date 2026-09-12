@@ -377,7 +377,7 @@ export default function DashboardPage() {
   };
 
   return (
-    <section className={permissions.isContributor() ? "flex h-[calc(100vh-10rem)] min-h-0 flex-col gap-5 overflow-hidden" : "space-y-8"}>
+    <section className="space-y-8">
       {/* Welcome Section */}
       {!permissions.isContributor() && <div className="card rounded-4xl p-6 md:p-8">
         <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
@@ -678,7 +678,7 @@ export default function DashboardPage() {
 
       {/* Contributor Dashboard */}
       <ContributorOnly role={user?.role}>
-        <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-hidden">
+        <div className="flex flex-col gap-4">
           <div className="shrink-0 rounded-[2rem] bg-brand p-5 text-white shadow-[0_20px_44px_rgba(0,0,0,0.18)] md:px-7 md:py-6">
             <div className="flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
               <div>
@@ -708,9 +708,9 @@ export default function DashboardPage() {
 
           {feedback ? <div aria-live="polite" className="shrink-0 rounded-2xl border border-black/10 bg-white/70 px-4 py-3 text-sm">{feedback}</div> : null}
 
-          {/* Main content: tasks list + wallet side-by-side, capped in height so it doesn't overflow */}
-          <div className="grid min-h-0 flex-1 gap-5 overflow-hidden xl:grid-cols-[minmax(0,1.35fr)_minmax(22rem,0.55fr)]">
-            <article className="card flex min-h-0 flex-col overflow-hidden rounded-[2rem] p-5 md:p-6">
+          {/* Main content: tasks list + wallet side-by-side */}
+          <div className="grid gap-5 xl:grid-cols-[minmax(0,1.35fr)_minmax(22rem,0.55fr)]">
+            <article className="card flex flex-col rounded-[2rem] p-5 md:p-6">
               <div className="flex shrink-0 items-start justify-between gap-4">
                 <div>
                   <p className="eyebrow text-xs text-muted">Task queue</p>
@@ -718,8 +718,8 @@ export default function DashboardPage() {
                 </div>
                 <span className="rounded-full border border-black/10 bg-white/70 px-3 py-1.5 text-xs font-semibold text-muted">{tasks.length} open</span>
               </div>
-              {/* Scrollable task list — stays within the card, no page overflow */}
-              <div className="mt-5 min-h-0 flex-1 space-y-3 overflow-y-auto pr-1">
+              {/* Task list */}
+              <div className="mt-5 space-y-3 pr-1">
                 {tasks.map((task) => {
                   const progress = task.requiredLabels ? Math.min((task.submittedLabels / task.requiredLabels) * 100, 100) : 0;
                   const statusDisplay = getTaskStatusDisplay(task.status);
@@ -771,7 +771,7 @@ export default function DashboardPage() {
               </div>
             </article>
 
-            <div className="flex min-h-0 flex-col">
+            <div className="flex flex-col">
               <article className="rounded-[2rem] border border-black/10 bg-white p-5 md:p-6">
                 <div className="flex items-center gap-3">
                   <span className="rounded-2xl bg-black p-2.5 text-white"><Wallet className="size-5" aria-hidden="true" /></span>

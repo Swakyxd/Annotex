@@ -40,7 +40,18 @@ export default function TaskLabelingPage() {
         if (!res.ok) throw new Error(`Failed to load task: ${res.status}`);
 
         const json = await res.json();
-        setTask(json.data || json.task || null);
+        const loadedTask = json.data || json.task || null;
+        setTask(loadedTask);
+
+        if (loadedTask && (loadedTask.status === "pending" || loadedTask.status === "in_progress")) {
+          await fetch(`${API_BASE_URL}/tasks/${taskId}/assign`, {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${session.accessToken}`,
+              "Content-Type": "application/json",
+            },
+          }).catch(() => null);
+        }
       } catch (err) {
         setError(err instanceof Error ? err.message : "Unable to fetch task");
       } finally {

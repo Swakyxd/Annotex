@@ -149,12 +149,39 @@ export class TaskService {
       throw new AppError('Task not found', 404);
     }
 
-    if (task.status !== TaskStatus.PENDING) {
+    const isAvailable =
+      task.status === TaskStatus.PENDING ||
+      task.status === TaskStatus.IN_PROGRESS ||
+      (task.status === TaskStatus.LABELED && task.submittedLabels < task.requiredLabels);
+
+    if (!isAvailable) {
       throw new AppError('Task is not available for assignment', 400);
     }
 
-    if (task.assignedToId && task.assignedToId !== userId) {
-      throw new AppError('Task is already assigned to another user', 400);
+    if (task.assignedToId) {
+      if (task.assignedToId.toLowerCase() === userId.toLowerCase()) {
+        // Already assigned to this user — return task directly
+        return prisma.task.findUnique({
+          where: { id: taskId },
+          include: { dataset: true, assignedTo: true },
+        });
+      }
+      // Task is assigned to a different contributor
+      if (task.status === TaskStatus.IN_PROGRESS) {
+        throw new AppError('Task is currently assigned to another contributor', 400);
+      }
+    }
+
+    // Check if user already submitted a label for this task
+    const existingLabel = await prisma.label.findFirst({
+      where: {
+        taskId,
+        contributorId: userId,
+      },
+    });
+
+    if (existingLabel) {
+      throw new AppError('You have already submitted a label for this task', 400);
     }
 
     const updatedTask = await prisma.task.update({

@@ -131,12 +131,13 @@ export default function TaskDetailsPage() {
 
   const { labels, loading: labelsLoading, refetch: refetchLabels } = useTaskLabels(taskId);
   const { lastSubmittedLabel } = useSubmitLabel();
-  const { isContributor, isValidator } = usePermissions();
+  const { isContributor, isValidator, isAdmin } = usePermissions();
 
   const [showForm, setShowForm] = useState(false);
   const [showResult, setShowResult] = useState(false);
   const [isLeaving, setIsLeaving] = useState(false);
   const [isAssigning, setIsAssigning] = useState(false);
+  const [moderatingId, setModeratingId] = useState<string | null>(null);
 
   const fetchTask = useCallback(async () => {
     if (!taskId) return;
@@ -170,8 +171,63 @@ export default function TaskDetailsPage() {
   }, [taskId, accessToken]);
 
   useEffect(() => {
+    const fetchTask = async () => {
+      if (!taskId) return;
+      setTasksLoading(true);
+      setTaskError(null);
+      try {
+        const session = await getSession();
+        const token = session?.accessToken ?? accessToken;
+        if (!token) throw new Error('Missing session token. Please sign in again.');
+
+        const response = await fetch(`${API_BASE_URL}/tasks/${taskId}`, {
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        });
+        const payload = (await response.json()) as { success: boolean; message: string; data?: Task };
+        if (!response.ok || !payload.success || !payload.data) throw new Error(payload.message || 'Failed to load task');
+
+        let loadedTask = payload.data;
+        setTask(loadedTask);
+
+        // Auto-assign task if opened by contributor and currently unassigned or pending
+        if (
+          loadedTask &&
+          (loadedTask.status === 'pending' || loadedTask.status === 'in_progress') &&
+          (!loadedTask.assignedToId || (user?.id && loadedTask.assignedToId.toLowerCase() !== user.id.toLowerCase()))
+        ) {
+          try {
+            const assignRes = await fetch(`${API_BASE_URL}/tasks/${taskId}/assign`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+            });
+            if (assignRes.ok) {
+              const assignPayload = (await assignRes.json()) as { success: boolean; data?: Task };
+              if (assignPayload.data) {
+                loadedTask = assignPayload.data;
+                setTask(loadedTask);
+              }
+            }
+          } catch {
+            // Fall back gracefully
+          }
+        }
+
+        const recordsResponse = await fetch(`${API_BASE_URL}/tasks/${taskId}/records`, {
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        });
+        if (recordsResponse.ok) {
+          const rp = (await recordsResponse.json()) as { success: boolean; data?: { records?: TaskRecord[] } };
+          if (rp.success) setTaskRecords(rp.data?.records ?? []);
+        }
+      } catch (error) {
+        setTask(null);
+        setTaskError(error instanceof Error ? error.message : 'Failed to load task');
+      } finally {
+        setTasksLoading(false);
+      }
+    };
     void fetchTask();
-  }, [fetchTask]);
+  }, [taskId, accessToken, user?.id]);
 
   if (tasksLoading) {
     return (
@@ -194,10 +250,11 @@ export default function TaskDetailsPage() {
     );
   }
 
-  const progressPercent = task.requiredLabels ? (task.submittedLabels / task.requiredLabels) * 100 : 0;
+  const submittedCount = Math.max(task.submittedLabels ?? 0, labels.length);
+  const progressPercent = task.requiredLabels ? Math.min(100, (submittedCount / task.requiredLabels) * 100) : 0;
   const canSubmitLabel = isContributor() || isValidator();
   const isAcceptingSubmissions = task.status === 'pending' || task.status === 'in_progress';
-  const canLeaveTask = isContributor() && task.status === 'in_progress' && task.assignedToId === user?.id;
+  const canLeaveTask = isContributor() && task.status === 'in_progress' && !!user?.id && task.assignedToId?.toLowerCase() === user.id.toLowerCase();
   const activeRecord = task.record ?? taskRecords[0];
   const labelOptions = Array.isArray(task.dataset?.labelOptions)
     ? task.dataset.labelOptions.filter((o): o is string => typeof o === 'string')
@@ -255,6 +312,58 @@ export default function TaskDetailsPage() {
     }
   };
 
+  const handleValidateLabel = async (labelId: string, isAccepted: boolean) => {
+    setModeratingId(labelId);
+    try {
+      const session = await getSession();
+      const token = session?.accessToken ?? accessToken;
+      if (!token) throw new Error('Missing session token.');
+
+      const response = await fetch(`${API_BASE_URL}/labels/${labelId}/validate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          isAccepted,
+          reason: isAccepted ? undefined : 'Rejected by reviewer',
+        }),
+      });
+
+      const payload = (await response.json()) as { success: boolean; message?: string };
+      if (!response.ok || !payload.success) throw new Error(payload.message || 'Failed to update label status');
+
+      void refetchLabels();
+      void fetchTask();
+    } catch (error) {
+      setTaskError(error instanceof Error ? error.message : 'Failed to update label status');
+    } finally {
+      setModeratingId(null);
+    }
+  };
+
+  const handleStartLabeling = async () => {
+    if (isContributor() && task && (task.status === 'pending' || task.status === 'in_progress') && (!task.assignedToId || (user?.id && task.assignedToId.toLowerCase() !== user.id.toLowerCase()))) {
+      try {
+        const session = await getSession();
+        const token = session?.accessToken ?? accessToken;
+        if (token) {
+          const res = await fetch(`${API_BASE_URL}/tasks/${taskId}/assign`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          });
+          if (res.ok) {
+            const payload = (await res.json()) as { success: boolean; data?: Task };
+            if (payload.data) {
+              setTask(payload.data);
+            }
+          }
+        }
+      } catch {
+        // Fall back gracefully — backend submitLabel will auto-assign if necessary
+      }
+    }
+    setShowForm(true);
+  };
+
   return (
     /* flex-1 + min-h-0 + overflow-y-auto: fills the shell content slot and scrolls internally */
     <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
@@ -293,7 +402,7 @@ export default function TaskDetailsPage() {
       <div className={`p-6 ${showForm ? 'flex gap-5 items-start' : 'space-y-5'}`}>
 
         {/* Left column: always visible content */}
-        <div className={`space-y-5 ${ showForm ? 'w-1/2 shrink-0 sticky top-0' : '' }`}>
+        <div className={`space-y-5 ${showForm ? 'w-1/2 shrink-0 sticky top-0' : ''}`}>
           {taskError && (
             <div className="rounded-2xl border border-black/10 bg-white/70 px-4 py-3 text-sm" role="alert">
               {taskError}
@@ -363,7 +472,7 @@ export default function TaskDetailsPage() {
               <h2 className="mt-2 font-mono text-2xl font-semibold tracking-[-0.04em]">Label Progress</h2>
               <div className="mt-4 space-y-2">
                 <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted">{task.submittedLabels} of {task.requiredLabels} labels received</span>
+                  <span className="text-muted">{submittedCount} of {task.requiredLabels} labels received</span>
                   <span className="font-semibold">{Math.round(progressPercent)}%</span>
                 </div>
                 <div className="h-2 overflow-hidden rounded-full bg-black/8">
@@ -379,14 +488,47 @@ export default function TaskDetailsPage() {
                   <h3 className="eyebrow text-[0.65rem] text-muted">Submitted labels</h3>
                   <div className="max-h-56 space-y-2 overflow-y-auto pr-1">
                     {labels.map((label, idx) => (
-                      <div key={label.id} className="flex items-center justify-between rounded-2xl border border-black/8 bg-white/60 px-4 py-3 text-sm">
-                        <div>
-                          <p className="font-semibold">{idx + 1}. {label.value}</p>
-                          <p className="mt-0.5 text-xs text-muted">Confidence: {Math.round(label.confidence * 100)}%</p>
+                      <div key={label.id} className="flex items-center justify-between gap-3 rounded-2xl border border-black/8 bg-white/60 px-4 py-3 text-sm">
+                        <div className="min-w-0 flex-1">
+                          <p className="font-semibold truncate">{idx + 1}. {label.value}</p>
+                          <p className="mt-0.5 text-xs text-muted">
+                            Confidence: {Math.round((label.confidence ?? 1) * 100)}%
+                            {label.contributor?.email && ` · by ${label.contributor.email}`}
+                          </p>
                         </div>
-                        <p className="whitespace-nowrap text-xs text-muted ml-4">
-                          {formatDistanceToNow(new Date(label.createdAt), { addSuffix: true })}
-                        </p>
+                        <div className="flex items-center gap-2 shrink-0">
+                          <span className="whitespace-nowrap text-xs text-muted">
+                            {formatDistanceToNow(new Date(label.createdAt), { addSuffix: true })}
+                          </span>
+                          {label.isAccepted ? (
+                            <span className="rounded-full bg-emerald-100 text-emerald-800 px-2.5 py-0.5 text-xs font-semibold">
+                              Approved
+                            </span>
+                          ) : label.isRejected ? (
+                            <span className="rounded-full bg-red-100 text-red-800 px-2.5 py-0.5 text-xs font-semibold">
+                              Rejected
+                            </span>
+                          ) : (isValidator() || isAdmin()) ? (
+                            <div className="flex items-center gap-1.5 ml-2">
+                              <button
+                                type="button"
+                                disabled={moderatingId === label.id}
+                                onClick={() => void handleValidateLabel(label.id, true)}
+                                className="rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white px-3 py-1.5 text-xs font-semibold transition shadow-sm"
+                              >
+                                Approve
+                              </button>
+                              <button
+                                type="button"
+                                disabled={moderatingId === label.id}
+                                onClick={() => void handleValidateLabel(label.id, false)}
+                                className="rounded-xl bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white px-3 py-1.5 text-xs font-semibold transition shadow-sm"
+                              >
+                                Reject
+                              </button>
+                            </div>
+                          ) : null}
+                        </div>
                       </div>
                     ))}
                   </div>

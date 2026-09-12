@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { getSession } from "next-auth/react";
+import { Activity, CheckCircle2, Gauge, Users } from "lucide-react";
+import type { ReactNode } from "react";
 
 import { useAuth } from "@/components/providers/auth-provider";
 import { API_BASE_URL } from "@/lib/constants";
@@ -23,7 +25,16 @@ type DashboardStats = {
 type QualityMetrics = {
   averageConsensusScore: string;
   validatedTasks: number;
-  topPerformers: Array<{ id: string; firstName: string; lastName: string; accuracyRate: number; tasksCompleted: number }>;
+  activeContributors: number;
+  topPerformers: Array<{
+    id: string;
+    firstName: string;
+    lastName: string;
+    accuracyRate: number | null;
+    tasksCompleted: number;
+    labelsSubmitted: number;
+    reviewedLabels: number;
+  }>;
 };
 
 type UserPerformance = {
@@ -132,17 +143,86 @@ export default function AnalyticsPage() {
           )}
 
           <article className="card rounded-[1.75rem] p-6">
-            <h2 className="font-semibold">Quality metrics</h2>
-            <p className="mt-2 text-sm text-muted">Average consensus score: {quality?.averageConsensusScore ?? "0"}</p>
-            <p className="text-sm text-muted">Validated tasks: {quality?.validatedTasks ?? 0}</p>
-            <div className="mt-3 space-y-2">
-              {(quality?.topPerformers ?? []).slice(0, 10).map((u) => (
-                <div key={u.id} className="rounded-lg border border-black/10 bg-white/60 p-3 text-sm">
-                  <p className="font-medium">{u.firstName} {u.lastName}</p>
-                  <p className="text-muted">Accuracy: {u.accuracyRate}% | Tasks: {u.tasksCompleted}</p>
-                </div>
-              ))}
-              {!quality?.topPerformers?.length ? <p className="text-sm text-muted">No performer data yet.</p> : null}
+            <div className="flex flex-wrap items-end justify-between gap-3">
+              <div>
+                <p className="eyebrow text-xs text-muted">Platform quality</p>
+                <h2 className="mt-2 text-xl font-semibold">Quality metrics</h2>
+              </div>
+              <p className="text-sm text-muted">Live validation performance</p>
+            </div>
+            <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              <KpiCard
+                icon={<CheckCircle2 className="h-5 w-5" />}
+                label="Total validated tasks"
+                value={quality?.validatedTasks ?? 0}
+              />
+              <KpiCard
+                icon={<Gauge className="h-5 w-5" />}
+                label="Avg consensus score"
+                value={`${formatConsensus(quality?.averageConsensusScore)}%`}
+              />
+              <KpiCard
+                icon={<Users className="h-5 w-5" />}
+                label="Active contributors"
+                value={quality?.activeContributors ?? 0}
+              />
+            </div>
+          </article>
+
+          <article className="card rounded-[1.75rem] overflow-hidden">
+            <div className="border-b border-black/10 bg-black/[0.03] px-6 py-5">
+              <div className="flex items-center gap-2">
+                <Activity className="h-5 w-5" aria-hidden="true" />
+                <h2 className="font-semibold">Contributor performance</h2>
+              </div>
+              <p className="mt-1 text-sm text-muted">Active contributors ranked by accuracy.</p>
+            </div>
+            <div className="overflow-x-auto px-6 py-2">
+              <table className="min-w-full text-sm">
+                <thead>
+                  <tr className="border-b border-black/10 text-left text-muted">
+                    <th className="py-3 pr-6 font-medium">Contributor</th>
+                    <th className="py-3 pr-6 font-medium">Accuracy</th>
+                    <th className="py-3 pr-6 font-medium">Completed tasks</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {(quality?.topPerformers ?? []).map((contributor) => (
+                    <tr key={contributor.id} className="border-b border-black/5 last:border-0">
+                      <td className="py-4 pr-6">
+                        <p className="font-medium">{contributor.firstName} {contributor.lastName}</p>
+                        <p className="mt-1 text-xs text-muted">Contributor</p>
+                      </td>
+                      <td className="min-w-48 py-4 pr-6">
+                        <div className="flex items-center gap-3">
+                          <div className="h-2 flex-1 overflow-hidden rounded-full bg-black/10">
+                            <div
+                              className="h-full rounded-full bg-black transition-all"
+                              style={{
+                                width: `${Math.min(100, Math.max(0, contributor.accuracyRate ?? 0))}%`,
+                              }}
+                            />
+                          </div>
+                          <span className="w-14 text-right font-semibold">
+                            {contributor.accuracyRate === null ? "N/A" : `${contributor.accuracyRate.toFixed(1)}%`}
+                          </span>
+                        </div>
+                        <p className="mt-1 text-xs text-muted">
+                          {contributor.reviewedLabels} reviewed labels
+                        </p>
+                      </td>
+                      <td className="py-4 pr-6">
+                        <span className="inline-flex rounded-full border border-black/10 bg-black/[0.04] px-3 py-1 text-xs font-semibold">
+                          {contributor.labelsSubmitted} labels submitted
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              {!quality?.topPerformers?.length ? (
+                <p className="py-8 text-center text-sm text-muted">No active contributor data yet.</p>
+              ) : null}
             </div>
           </article>
         </>
@@ -153,12 +233,41 @@ export default function AnalyticsPage() {
             <div className="rounded-lg border border-black/10 bg-white/60 p-3">Total labels: {performance?.statistics?.totalLabels ?? 0}</div>
             <div className="rounded-lg border border-black/10 bg-white/60 p-3">Accepted: {performance?.statistics?.acceptedLabels ?? 0}</div>
             <div className="rounded-lg border border-black/10 bg-white/60 p-3">Rejected: {performance?.statistics?.rejectedLabels ?? 0}</div>
-            <div className="rounded-lg border border-black/10 bg-white/60 p-3">Accuracy: {performance?.statistics?.accuracyRate ?? "0"}%</div>
+            <div className="rounded-lg border border-black/10 bg-white/60 p-3">
+              Accuracy: {performance?.statistics?.accuracyRate === "N/A"
+                ? "N/A"
+                : `${performance?.statistics?.accuracyRate ?? "0"}%`}
+            </div>
             <div className="rounded-lg border border-black/10 bg-white/60 p-3">Avg time: {performance?.statistics?.averageTimePerLabel ?? 0}s</div>
             <div className="rounded-lg border border-black/10 bg-white/60 p-3">Earnings: {performance?.statistics?.totalEarnings ?? 0} SOL</div>
           </div>
         </article>
       )}
     </section>
+  );
+}
+
+function formatConsensus(value?: string) {
+  const score = Number(value);
+  return Number.isFinite(score) ? (score * 100).toFixed(1) : "0.0";
+}
+
+function KpiCard({
+  icon,
+  label,
+  value,
+}: {
+  icon: ReactNode;
+  label: string;
+  value: string | number;
+}) {
+  return (
+    <div className="rounded-2xl border border-black/10 bg-white/70 p-4 shadow-sm">
+      <div className="flex items-center justify-between gap-3">
+        <span className="rounded-xl bg-black/[0.06] p-2" aria-hidden="true">{icon}</span>
+        <span className="text-right text-2xl font-semibold tracking-[-0.04em]">{value}</span>
+      </div>
+      <p className="mt-4 text-xs font-semibold uppercase tracking-[0.12em] text-muted">{label}</p>
+    </div>
   );
 }

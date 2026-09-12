@@ -10,6 +10,15 @@ export interface Label {
   contributorId: string;
   taskId: string;
   createdAt: string;
+  isAccepted?: boolean;
+  isRejected?: boolean;
+  rejectionReason?: string;
+  contributor?: {
+    id: string;
+    firstName?: string;
+    lastName?: string;
+    email?: string;
+  };
   task?: {
     id: string;
     title: string;

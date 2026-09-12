@@ -1,0 +1,7 @@
+record_id,image_path,label_hint,topic,source,language,priority
+1,images/cat_01.png,cat,animals,synthetic,en,high
+2,images/dog_01.png,dog,animals,synthetic,en,high
+3,images/car_01.png,car,vehicles,synthetic,en,high
+4,images/bird_01.png,bird,animals,synthetic,en,medium
+5,images/fruit_01.png,fruit,objects,synthetic,en,medium
+6,images/bicycle_01.png,bicycle,vehicles,synthetic,en,medium

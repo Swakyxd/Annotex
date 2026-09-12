@@ -115,4 +115,23 @@ export class LabelController {
 
     res.status(200).json(response);
   });
+
+  /**
+   * Validate label (approve or reject via single endpoint)
+   */
+  validateLabel = asyncHandler(async (req: Request, res: Response) => {
+    const { id } = req.params;
+    const { isAccepted, action, reason } = req.body;
+    const accepted = typeof isAccepted === 'boolean' ? isAccepted : action === 'approve';
+    const label = await this.labelService.updateLabelStatus(id, accepted, reason);
+
+    const response: ApiResponse = {
+      success: true,
+      message: `Label ${accepted ? 'approved' : 'rejected'} successfully`,
+      data: label,
+      timestamp: new Date().toISOString(),
+    };
+
+    res.status(200).json(response);
+  });
 }
