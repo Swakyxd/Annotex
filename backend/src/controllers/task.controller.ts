@@ -2,6 +2,8 @@ import { Request, Response } from 'express';
 import { asyncHandler } from '../middlewares/errorHandler.js';
 import { TaskService } from '../services/task.service.js';
 import { ApiResponse, TaskStatus } from '../types/index.js';
+import { sendZodValidationError } from '../middlewares/validation.js';
+import { TaskCreateSchema } from '../lib/validations/schemas.js';
 
 export class TaskController {
   private taskService: TaskService;
@@ -34,8 +36,13 @@ export class TaskController {
    * Create a new task
    */
   createTask = asyncHandler(async (req: Request, res: Response) => {
-    const taskData = req.body;
-    const task = await this.taskService.createTask(taskData, req.userId!);
+    const parsed = TaskCreateSchema.safeParse(req.body);
+    if (!parsed.success) {
+      sendZodValidationError(res, parsed.error);
+      return;
+    }
+
+    const task = await this.taskService.createTask(parsed.data, req.userId!);
 
     const response: ApiResponse = {
       success: true,

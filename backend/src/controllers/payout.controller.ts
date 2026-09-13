@@ -3,6 +3,11 @@ import { asyncHandler } from '../middlewares/errorHandler.js';
 import { BlockchainService } from '../services/blockchain.service.js';
 import { PayoutService } from '../services/payout.service.js';
 import { ApiResponse } from '../types/index.js';
+import { sendZodValidationError } from '../middlewares/validation.js';
+import {
+  CalculatePayoutsSchema,
+  TriggerPayoutSchema,
+} from '../lib/validations/schemas.js';
 
 export class PayoutController {
   private payoutService: PayoutService;
@@ -14,8 +19,13 @@ export class PayoutController {
   }
 
   calculatePayouts = asyncHandler(async (req: Request, res: Response) => {
-    const datasetId = req.body.datasetId as string | undefined;
-    const result = await this.payoutService.calculatePayouts(datasetId);
+    const parsed = CalculatePayoutsSchema.safeParse(req.body);
+    if (!parsed.success) {
+      sendZodValidationError(res, parsed.error);
+      return;
+    }
+
+    const result = await this.payoutService.calculatePayouts(parsed.data.datasetId);
 
     const response: ApiResponse = {
       success: true,
@@ -42,7 +52,13 @@ export class PayoutController {
   });
 
   triggerPayout = asyncHandler(async (req: Request, res: Response) => {
-    const { userId, datasetId } = req.body as { userId: string; datasetId?: string };
+    const parsed = TriggerPayoutSchema.safeParse(req.body);
+    if (!parsed.success) {
+      sendZodValidationError(res, parsed.error);
+      return;
+    }
+
+    const { userId, datasetId } = parsed.data;
 
     const payoutRequest = await this.blockchainService.createContributorPayoutRequest({
       adminUserId: req.userId!,

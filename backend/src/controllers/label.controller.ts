@@ -2,6 +2,13 @@ import { Request, Response } from 'express';
 import { asyncHandler } from '../middlewares/errorHandler.js';
 import { LabelService } from '../services/label.service.js';
 import { ApiResponse } from '../types/index.js';
+import { sendZodValidationError } from '../middlewares/validation.js';
+import {
+  LabelRejectSchema,
+  LabelApprovalSchema,
+  LabelSubmitSchema,
+  LabelValidationSchema,
+} from '../lib/validations/schemas.js';
 
 export class LabelController {
   private labelService: LabelService;
@@ -14,8 +21,14 @@ export class LabelController {
    * Submit a label for a task
    */
   submitLabel = asyncHandler(async (req: Request, res: Response) => {
+    const parsed = LabelSubmitSchema.safeParse(req.body);
+    if (!parsed.success) {
+      sendZodValidationError(res, parsed.error);
+      return;
+    }
+
     const labelData = {
-      ...req.body,
+      ...parsed.data,
       contributorId: req.userId!,
     };
 
@@ -86,6 +99,12 @@ export class LabelController {
    */
   approveLabel = asyncHandler(async (req: Request, res: Response) => {
     const { id } = req.params;
+    const parsed = LabelApprovalSchema.safeParse(req.body);
+    if (!parsed.success) {
+      sendZodValidationError(res, parsed.error);
+      return;
+    }
+
     const label = await this.labelService.approveLabel(id);
 
     const response: ApiResponse = {
@@ -103,8 +122,13 @@ export class LabelController {
    */
   rejectLabel = asyncHandler(async (req: Request, res: Response) => {
     const { id } = req.params;
-    const reason = req.body.reason as string | undefined;
-    const label = await this.labelService.rejectLabel(id, reason);
+    const parsed = LabelRejectSchema.safeParse(req.body);
+    if (!parsed.success) {
+      sendZodValidationError(res, parsed.error);
+      return;
+    }
+
+    const label = await this.labelService.rejectLabel(id, parsed.data.reason);
 
     const response: ApiResponse = {
       success: true,
@@ -121,7 +145,13 @@ export class LabelController {
    */
   validateLabel = asyncHandler(async (req: Request, res: Response) => {
     const { id } = req.params;
-    const { isAccepted, action, reason } = req.body;
+    const parsed = LabelValidationSchema.safeParse(req.body);
+    if (!parsed.success) {
+      sendZodValidationError(res, parsed.error);
+      return;
+    }
+
+    const { isAccepted, action, reason } = parsed.data;
     const accepted = typeof isAccepted === 'boolean' ? isAccepted : action === 'approve';
     const label = await this.labelService.updateLabelStatus(id, accepted, reason);
 

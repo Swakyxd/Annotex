@@ -2,6 +2,12 @@ import { Request, Response } from 'express';
 import { asyncHandler } from '../middlewares/errorHandler.js';
 import { AuthService } from '../services/auth.service.js';
 import { ApiResponse } from '../types/index.js';
+import {
+  LoginSchema,
+  RefreshTokenSchema,
+  RegisterSchema,
+} from '../lib/validations/schemas.js';
+import { sendZodValidationError } from '../middlewares/validation.js';
 
 export class AuthController {
   private authService: AuthService;
@@ -14,8 +20,13 @@ export class AuthController {
    * Register a new user
    */
   register = asyncHandler(async (req: Request, res: Response) => {
-    const userData = req.body;
-    const result = await this.authService.register(userData);
+    const parsed = RegisterSchema.safeParse(req.body);
+    if (!parsed.success) {
+      sendZodValidationError(res, parsed.error);
+      return;
+    }
+
+    const result = await this.authService.register(parsed.data);
 
     const response: ApiResponse = {
       success: true,
@@ -31,8 +42,13 @@ export class AuthController {
    * Login user
    */
   login = asyncHandler(async (req: Request, res: Response) => {
-    const { email, password } = req.body;
-    const result = await this.authService.login(email, password);
+    const parsed = LoginSchema.safeParse(req.body);
+    if (!parsed.success) {
+      sendZodValidationError(res, parsed.error);
+      return;
+    }
+
+    const result = await this.authService.login(parsed.data.email, parsed.data.password);
 
     const response: ApiResponse = {
       success: true,
@@ -48,8 +64,13 @@ export class AuthController {
    * Refresh access token
    */
   refreshToken = asyncHandler(async (req: Request, res: Response) => {
-    const { refreshToken } = req.body;
-    const result = await this.authService.refreshToken(refreshToken);
+    const parsed = RefreshTokenSchema.safeParse(req.body);
+    if (!parsed.success) {
+      sendZodValidationError(res, parsed.error);
+      return;
+    }
+
+    const result = await this.authService.refreshToken(parsed.data.refreshToken);
 
     const response: ApiResponse = {
       success: true,

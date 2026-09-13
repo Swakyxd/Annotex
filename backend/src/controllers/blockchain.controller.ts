@@ -2,6 +2,13 @@ import { Request, Response } from 'express';
 import { asyncHandler } from '../middlewares/errorHandler.js';
 import { BlockchainService } from '../services/blockchain.service.js';
 import { ApiResponse } from '../types/index.js';
+import { sendZodValidationError } from '../middlewares/validation.js';
+import {
+  ConfirmTransferSchema,
+  ConnectWalletSchema,
+  ProcessPayoutSchema,
+  ProjectFundingSchema,
+} from '../lib/validations/schemas.js';
 
 export class BlockchainController {
   private blockchainService: BlockchainService;
@@ -14,10 +21,15 @@ export class BlockchainController {
    * Connect wallet address to user account
    */
   connectWallet = asyncHandler(async (req: Request, res: Response) => {
-    const { walletAddress } = req.body;
+    const parsed = ConnectWalletSchema.safeParse(req.body);
+    if (!parsed.success) {
+      sendZodValidationError(res, parsed.error);
+      return;
+    }
+
     const userId = req.userId!;
 
-    const result = await this.blockchainService.connectWallet(userId, walletAddress);
+    const result = await this.blockchainService.connectWallet(userId, parsed.data.walletAddress);
 
     const response: ApiResponse = {
       success: true,
@@ -33,8 +45,16 @@ export class BlockchainController {
    * Process payout to user
    */
   processPayout = asyncHandler(async (req: Request, res: Response) => {
-    const { userId, amount } = req.body;
-    const transaction = await this.blockchainService.processPayout(userId, amount);
+    const parsed = ProcessPayoutSchema.safeParse(req.body);
+    if (!parsed.success) {
+      sendZodValidationError(res, parsed.error);
+      return;
+    }
+
+    const transaction = await this.blockchainService.processPayout(
+      parsed.data.userId,
+      parsed.data.amount
+    );
 
     const response: ApiResponse = {
       success: true,
@@ -47,13 +67,13 @@ export class BlockchainController {
   });
 
   createProjectFundingRequest = asyncHandler(async (req: Request, res: Response) => {
-    const { datasetId, amountSOL, label, message, memo } = req.body as {
-      datasetId: string;
-      amountSOL: number;
-      label?: string;
-      message?: string;
-      memo?: string;
-    };
+    const parsed = ProjectFundingSchema.safeParse(req.body);
+    if (!parsed.success) {
+      sendZodValidationError(res, parsed.error);
+      return;
+    }
+
+    const { datasetId, amountSOL, label, message, memo } = parsed.data;
 
     const result = await this.blockchainService.createProjectFundingRequest({
       adminUserId: req.userId!,
@@ -75,8 +95,13 @@ export class BlockchainController {
   });
 
   confirmTransferRequest = asyncHandler(async (req: Request, res: Response) => {
-    const { transactionId } = req.body as { transactionId: string };
-    const result = await this.blockchainService.confirmTransferRequest(transactionId);
+    const parsed = ConfirmTransferSchema.safeParse(req.body);
+    if (!parsed.success) {
+      sendZodValidationError(res, parsed.error);
+      return;
+    }
+
+    const result = await this.blockchainService.confirmTransferRequest(parsed.data.transactionId);
 
     const response: ApiResponse = {
       success: true,

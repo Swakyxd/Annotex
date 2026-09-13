@@ -2,22 +2,11 @@ import { Request, Response } from 'express';
 import { AppError, asyncHandler } from '../middlewares/errorHandler.js';
 import { DatasetService } from '../services/dataset.service.js';
 import { ApiResponse } from '../types/index.js';
-
-function parseMaybeJson(input: unknown, fieldName: string): unknown {
-  if (input === undefined || input === null || input === '') {
-    return undefined;
-  }
-
-  if (typeof input !== 'string') {
-    return input;
-  }
-
-  try {
-    return JSON.parse(input);
-  } catch {
-    throw new AppError(`Invalid JSON for ${fieldName}`, 400);
-  }
-}
+import { sendZodValidationError } from '../middlewares/validation.js';
+import {
+  DatasetPublishSchema,
+  DatasetUploadSchema,
+} from '../lib/validations/schemas.js';
 
 export class DatasetController {
   private datasetService: DatasetService;
@@ -52,6 +41,12 @@ export class DatasetController {
    * Upload a new dataset
    */
   uploadDataset = asyncHandler(async (req: Request, res: Response) => {
+    const parsed = DatasetUploadSchema.safeParse(req.body);
+    if (!parsed.success) {
+      sendZodValidationError(res, parsed.error);
+      return;
+    }
+
     if (!req.file) {
       throw new AppError('No file uploaded', 400);
     }
@@ -65,19 +60,19 @@ export class DatasetController {
       totalRewardSOL,
       maxLabelsPerRecord,
       consensusThreshold,
-    } = req.body;
+    } = parsed.data;
     const dataset = await this.datasetService.uploadDataset(
       name,
-      description,
+      description ?? '',
       req.file,
       req.userId!,
       {
         labelType,
-        labelOptions: parseMaybeJson(labelOptions, 'labelOptions'),
-        labelSchema: parseMaybeJson(labelSchema, 'labelSchema'),
-        totalRewardSOL: totalRewardSOL !== undefined ? Number(totalRewardSOL) : undefined,
-        maxLabelsPerRecord: maxLabelsPerRecord !== undefined ? Number(maxLabelsPerRecord) : undefined,
-        consensusThreshold: consensusThreshold !== undefined ? Number(consensusThreshold) : undefined,
+        labelOptions,
+        labelSchema,
+        totalRewardSOL,
+        maxLabelsPerRecord,
+        consensusThreshold,
       }
     );
 
@@ -96,6 +91,12 @@ export class DatasetController {
    */
   publishDataset = asyncHandler(async (req: Request, res: Response) => {
     const { id } = req.params;
+    const parsed = DatasetPublishSchema.safeParse(req.body);
+    if (!parsed.success) {
+      sendZodValidationError(res, parsed.error);
+      return;
+    }
+
     const result = await this.datasetService.publishDataset(id, req.userId!);
 
     const response: ApiResponse = {

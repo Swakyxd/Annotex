@@ -2,6 +2,8 @@ import { Request, Response } from 'express';
 import { asyncHandler } from '../middlewares/errorHandler.js';
 import { UserService } from '../services/user.service.js';
 import { ApiResponse } from '../types/index.js';
+import { sendZodValidationError } from '../middlewares/validation.js';
+import { UserUpdateSchema } from '../lib/validations/schemas.js';
 
 export class UserController {
   private userService: UserService;
@@ -51,8 +53,13 @@ export class UserController {
    */
   updateUser = asyncHandler(async (req: Request, res: Response) => {
     const { id } = req.params;
-    const updateData = req.body;
-    const user = await this.userService.updateUser(id, updateData, req.userId!);
+    const parsed = UserUpdateSchema.safeParse(req.body);
+    if (!parsed.success) {
+      sendZodValidationError(res, parsed.error);
+      return;
+    }
+
+    const user = await this.userService.updateUser(id, parsed.data, req.userId!);
 
     const response: ApiResponse = {
       success: true,

@@ -8,5 +8,8 @@
     "dev:backend": "npm --prefix backend run dev",
     "build": "npm --prefix frontend run build && npm --prefix backend run build",
     "test": "npm --prefix backend run test"
+  },
+  "dependencies": {
+    "zod": "^4.6.4"
   }
 }
