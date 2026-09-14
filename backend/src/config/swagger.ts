@@ -19,12 +19,12 @@ const options: swaggerJsdoc.Options = {
     },
     servers: [
       {
-        url: `http://localhost:${config.port}/api/${config.apiVersion}`,
-        description: 'Development server',
+        url: `/api/${config.apiVersion}`,
+        description: 'Current environment API server',
       },
       {
-        url: `https://api.annotex.com/api/${config.apiVersion}`,
-        description: 'Production server',
+        url: `http://localhost:${config.port}/api/${config.apiVersion}`,
+        description: 'Development local server',
       },
     ],
     components: {

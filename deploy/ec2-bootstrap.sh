@@ -256,6 +256,22 @@ server {
         access_log off;
     }
 
+    # Swagger UI API Documentation
+    location /api-docs/ {
+        proxy_pass http://localhost:5000/api-docs/;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade \$http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \$scheme;
+    }
+
+    location = /api-docs {
+        return 301 /api-docs/;
+    }
+
     location / {
         proxy_pass http://localhost:3000;
         proxy_http_version 1.1;

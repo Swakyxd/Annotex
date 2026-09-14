@@ -156,7 +156,7 @@ export function AppShell({
             <div className="flex items-center gap-3">
               <a
                 className="btn-secondary"
-                href={process.env.NEXT_PUBLIC_API_DOCS_URL || "http://localhost:5000/api-docs"}
+                href={process.env.NEXT_PUBLIC_API_DOCS_URL || "/api-docs"}
                 rel="noreferrer"
                 target="_blank"
               >
