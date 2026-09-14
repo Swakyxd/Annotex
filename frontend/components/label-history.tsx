@@ -11,6 +11,7 @@ export interface LabelHistoryItem {
   value: string;
   confidence: number;
   createdAt: string;
+  status?: 'APPROVED' | 'REJECTED';
   isAccurate?: boolean;
   feedback?: string;
 }
@@ -27,8 +28,9 @@ export function LabelHistory({ labels, loading = false, onTaskClick }: LabelHist
     if (!labels.length) return { totalLabels: 0, averageConfidence: 0, accuracyRate: 0, recentCount: 0 };
     const totalLabels = labels.length;
     const averageConfidence = labels.reduce((sum, l) => sum + l.confidence, 0) / totalLabels;
-    const accurateLabels = labels.filter((l) => l.isAccurate !== false).length;
-    const accuracyRate = (accurateLabels / totalLabels) * 100;
+    const reviewedLabels = labels.filter((label) => label.status === 'APPROVED' || label.status === 'REJECTED');
+    const approvedLabels = reviewedLabels.filter((label) => label.status === 'APPROVED').length;
+    const accuracyRate = reviewedLabels.length > 0 ? (approvedLabels / reviewedLabels.length) * 100 : 0;
     const recentDate = new Date();
     recentDate.setDate(recentDate.getDate() - 7);
     const recentCount = labels.filter((l) => new Date(l.createdAt) > recentDate).length;

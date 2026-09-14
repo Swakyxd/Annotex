@@ -4,7 +4,7 @@ import React from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useLabelHistory } from '@/hooks/use-labels';
-import { LabelHistory } from '@/components/label-history';
+import { LabelHistory, LabelHistoryItem } from '@/components/label-history';
 import { ArrowLeft, RefreshCw } from 'lucide-react';
 
 /** LabelHistoryPage — Shows user's label submission history and performance metrics */
@@ -12,13 +12,14 @@ export default function LabelHistoryPage() {
   const router = useRouter();
   const { labels, loading, error, refetch } = useLabelHistory();
 
-  const historyItems = labels.map((label) => ({
+  const historyItems: LabelHistoryItem[] = labels.map((label) => ({
     id: label.id,
     taskId: label.taskId,
     taskTitle: label.task?.title ?? `Task ${label.taskId.slice(0, 8)}`,
     value: label.value,
     confidence: label.confidence,
     createdAt: label.createdAt,
+    status: label.isAccepted ? 'APPROVED' : label.isRejected ? 'REJECTED' : undefined,
   }));
 
   const handleTaskClick = (taskId: string) => {

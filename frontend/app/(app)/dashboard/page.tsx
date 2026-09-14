@@ -711,7 +711,7 @@ export default function DashboardPage() {
           {/* Main content: tasks list + wallet side-by-side */}
           <div className="grid gap-5 xl:grid-cols-[minmax(0,1.35fr)_minmax(22rem,0.55fr)]">
             <article className="card flex flex-col rounded-[2rem] p-5 md:p-6">
-              <div className="flex shrink-0 items-start justify-between gap-4">
+              <div className="sticky top-0 z-10 flex shrink-0 items-start justify-between gap-4 bg-white">
                 <div>
                   <p className="eyebrow text-xs text-muted">Task queue</p>
                   <h2 className="mt-2 font-mono text-2xl font-semibold tracking-[-0.04em]">Available tasks</h2>
@@ -719,7 +719,7 @@ export default function DashboardPage() {
                 <span className="rounded-full border border-black/10 bg-white/70 px-3 py-1.5 text-xs font-semibold text-muted">{tasks.length} open</span>
               </div>
               {/* Task list */}
-              <div className="mt-5 space-y-3 pr-1">
+              <div className="mt-5 max-h-[calc(100vh-220px)] space-y-3 overflow-y-auto pr-2">
                 {tasks.map((task) => {
                   const progress = task.requiredLabels ? Math.min((task.submittedLabels / task.requiredLabels) * 100, 100) : 0;
                   const statusDisplay = getTaskStatusDisplay(task.status);
