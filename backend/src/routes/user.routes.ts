@@ -26,6 +26,11 @@ const userController = new UserController();
  *         name: limit
  *         schema:
  *           type: integer
+ *       - in: query
+ *         name: role
+ *         schema:
+ *           type: string
+ *         description: Filter by role (e.g. "contributor")
  *     responses:
  *       200:
  *         description: List of users
@@ -132,6 +137,36 @@ router.get(
   authenticate,
   validate([param('id').isUUID()]),
   userController.getUserStats
+);
+
+/**
+ * @swagger
+ * /users/{id}/promote:
+ *   patch:
+ *     summary: Promote a contributor to validator (Admin only)
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: User promoted to validator successfully
+ *       400:
+ *         description: User is not a contributor
+ *       404:
+ *         description: User not found
+ */
+router.patch(
+  '/:id/promote',
+  authenticate,
+  authorize(UserRole.ADMIN),
+  validate([param('id').isUUID()]),
+  userController.promoteToValidator
 );
 
 export default router;

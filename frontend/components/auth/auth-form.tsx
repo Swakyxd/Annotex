@@ -3,7 +3,7 @@
 import { Eye, EyeOff } from "lucide-react";
 import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import { startTransition, useState } from "react";
+import { startTransition, useEffect, useState } from "react";
 
 import type { AuthMode, RegisterRequest } from "@/lib/types";
 
@@ -29,10 +29,15 @@ const defaultState: FormState = {
 
 export function AuthForm({ mode }: AuthFormProps) {
   const router = useRouter();
+  const [mounted, setMounted] = useState(false);
   const [form, setForm] = useState<FormState>(defaultState);
   const [error, setError] = useState<string | null>(null);
   const [isPending, setIsPending] = useState(false);
   const [isPasswordVisible, setIsPasswordVisible] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const isRegister = mode === "register";
 
@@ -114,10 +119,13 @@ export function AuthForm({ mode }: AuthFormProps) {
         />
       </label>
 
-      <label className="block space-y-2 text-sm font-medium">
-        Password
+      <div className="space-y-2 text-sm font-medium">
+        <label htmlFor="auth-password" className="block text-sm font-medium">
+          Password
+        </label>
         <span className="relative block">
           <input
+            id="auth-password"
             autoComplete={isRegister ? "new-password" : "current-password"}
             className="field pr-12"
             minLength={8}
@@ -132,25 +140,18 @@ export function AuthForm({ mode }: AuthFormProps) {
             className="absolute inset-y-0 right-0 flex w-12 items-center justify-center text-muted transition-colors hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2"
             onClick={() => setIsPasswordVisible((visible) => !visible)}
             type="button"
+            suppressHydrationWarning
           >
-            {isPasswordVisible ? <EyeOff aria-hidden="true" size={18} /> : <Eye aria-hidden="true" size={18} />}
+            {mounted ? (
+              isPasswordVisible ? (
+                <EyeOff aria-hidden="true" size={18} />
+              ) : (
+                <Eye aria-hidden="true" size={18} />
+              )
+            ) : null}
           </button>
         </span>
-      </label>
-
-      {isRegister ? (
-        <label className="block space-y-2 text-sm font-medium">
-          Role
-          <select
-            className="field"
-            onChange={(event) => updateField("role", event.target.value as RegisterRequest["role"])}
-            value={form.role}
-          >
-            <option value="contributor">Contributor</option>
-            <option value="validator">Validator</option>
-          </select>
-        </label>
-      ) : null}
+      </div>
 
       <div className="rounded-[1.25rem] border border-black/8 bg-white/56 px-4 py-3 text-xs leading-6 text-muted">
         {isRegister ? (

@@ -406,12 +406,9 @@ export default function DashboardPage() {
       <AdminOnly role={user?.role}>
         <div className="space-y-5">
           {/* Admin Action Buttons */}
-          <div className="grid gap-4 md:grid-cols-4">
+          <div className="grid gap-4 md:grid-cols-3">
             <button className="btn-secondary" disabled={!canCallApi || isBusy} onClick={fetchTasks} type="button">
               Fetch all tasks
-            </button>
-            <button className="btn-secondary" disabled={!canCallApi || isBusy} onClick={fetchUserPerformance} type="button">
-              View statistics
             </button>
             <button className="btn-secondary" disabled={!canCallApi || isBusy} onClick={fetchTransactions} type="button">
               View transactions
@@ -478,16 +475,6 @@ export default function DashboardPage() {
             </article>
           </div>
 
-          {/* Label Review Section */}
-          <article className="card rounded-[1.75rem] p-6">
-            <h2 className="font-mono text-2xl font-semibold tracking-[-0.04em]">Label review queue</h2>
-            <p className="mt-2 text-sm text-muted">Approve or reject submitted labels from contributors.</p>
-            <div className="mt-4 rounded-lg border border-black/10 bg-white/50 p-4 text-sm text-muted">
-              <p>Label review functionality: API integration pending</p>
-              <p className="mt-2">Buttons for approve/reject will appear once backend endpoints are ready.</p>
-            </div>
-          </article>
-
           {/* Dataset Management */}
           <article className="card rounded-[1.75rem] p-6">
             <div className="flex items-center justify-between gap-3">
@@ -500,7 +487,7 @@ export default function DashboardPage() {
               </button>
             </div>
 
-            <div className="mt-4 space-y-3 max-h-96 overflow-y-auto">
+            <div className="mt-4 space-y-3 max-h-60 overflow-y-auto">
               {datasets.map((dataset) => (
                 <div key={dataset.id} className="rounded-lg border border-black/10 bg-white/60 p-4">
                   <div className="flex items-start justify-between gap-3">

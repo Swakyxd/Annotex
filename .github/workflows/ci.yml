@@ -24,6 +24,9 @@ jobs:
       - run: npm ci
       - run: npm run lint
       - run: npm run build
+      # Validates frontend/Dockerfile actually builds — the deploy job is otherwise
+      # the first place this Dockerfile ever gets built, live on the EC2 host.
+      - run: docker build -t annotex-frontend:ci --build-arg NEXT_PUBLIC_API_BASE_URL=http://localhost:5000/api/v1 .
 
   backend:
     runs-on: ubuntu-latest
@@ -62,6 +65,9 @@ jobs:
       - run: npm run lint
       - run: npm run build
       - run: npm test -- --runInBand
+      # Validates backend/Dockerfile actually builds — the deploy job is otherwise
+      # the first place this Dockerfile ever gets built, live on the EC2 host.
+      - run: docker build -t annotex-backend:ci .
 
   deploy:
     name: Deploy to EC2
