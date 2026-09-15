@@ -108,7 +108,11 @@ Search for **EC2** → **Instances** → **Launch instance**.
 
 Under **Network settings**, click Edit and allow:
 
-- **SSH (port 22)** — from **My IP** if your home IP is stable, otherwise Anywhere.
+- **SSH (port 22)** — from **My IP** if your home IP is stable, otherwise Anywhere. If you
+  set up the CD workflow in Part 6 (GitHub Actions deploying on push to `main`), this must
+  be **Anywhere (`0.0.0.0/0`)** — GitHub-hosted runners connect from a large, constantly
+  rotating range of IPs that can't be allowlisted. Key-only auth (already the AMI default)
+  plus `fail2ban` (installed by the bootstrap script) is the mitigation in that case.
 - **HTTP (port 80)** — from Anywhere. Certbot needs this to issue your certificate.
 - **HTTPS (port 443)** — from Anywhere. This is how people reach your site.
 
@@ -420,6 +424,7 @@ the command shown — treat any security claim you cannot check as not true.
 | Upload restrictions | Extension allowlist, 10 MB cap, 200 MB expanded-archive cap | `backend/src/middlewares/upload.ts` |
 | OS patches | `unattended-upgrades` enabled | `systemctl is-active unattended-upgrades` |
 | SSH brute-force | `fail2ban` enabled; the AMI already disables password login | `sudo fail2ban-client status sshd` |
+| SSH exposure (if CD enabled) | Port 22 open to `0.0.0.0/0` for GitHub Actions runners; key-only auth + `fail2ban` are the controls, not IP restriction | `sudo fail2ban-client status sshd`; confirm `PasswordAuthentication no` in `/etc/ssh/sshd_config` |
 
 Run `bash ~/Annotex/deploy/ec2-bootstrap.sh --verify-only` to check most of these at once.
 
@@ -440,7 +445,11 @@ Be clear-eyed about the gaps, rather than assuming a checklist covers them:
 ### Recommended, not automated
 
 - Enable **Secret Scanning + Push Protection** in the GitHub repo settings.
-- Restrict the SSH security group rule to your own IP rather than `0.0.0.0/0`.
+- Restrict the SSH security group rule to your own IP rather than `0.0.0.0/0` — **only if
+  you are not using the CD workflow** in Part 6. CD needs GitHub-hosted runners to reach
+  port 22, which means an IP restriction and CD are mutually exclusive; a self-hosted
+  runner on the instance itself is the way to keep both, at the cost of a persistent
+  process on an already memory-constrained `t2.micro`.
 - Rotate `JWT_SECRET` and `NEXTAUTH_SECRET` if they are ever exposed. Both invalidate
   existing sessions, so expect everyone to be logged out.
 - Attach an **IAM role** to the instance for S3 backups instead of putting access keys in
