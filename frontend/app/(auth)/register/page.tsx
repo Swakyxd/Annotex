@@ -20,7 +20,7 @@ export default async function RegisterPage() {
           Join the labeling workspace.
         </h2>
         <p className="text-sm leading-6 text-muted md:text-base">
-          Register as a contributor or validator, then move directly into the authenticated workspace.
+          Register as a contributor, then move directly into the authenticated workspace.
         </p>
       </div>
       <AuthForm mode="register" />

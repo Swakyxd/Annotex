@@ -38,5 +38,6 @@ export type LoginRequest = {
 export type RegisterRequest = LoginRequest & {
   firstName: string;
   lastName: string;
-  role: Exclude<UserRole, "admin">;
+  // Signup always creates a contributor; promotion to validator is an admin-only action.
+  role: "contributor";
 };

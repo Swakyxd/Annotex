@@ -6,11 +6,13 @@ export class UserService {
   /**
    * Get all users with pagination
    */
-  async getAllUsers(page: number = 1, limit: number = 10) {
+  async getAllUsers(page: number = 1, limit: number = 10, role?: string) {
     const skip = (page - 1) * limit;
+    const where = role ? { role } : undefined;
 
     const [users, total] = await Promise.all([
       prisma.user.findMany({
+        where,
         select: {
           id: true,
           email: true,
@@ -28,7 +30,7 @@ export class UserService {
         take: limit,
         orderBy: { createdAt: 'desc' },
       }),
-      prisma.user.count(),
+      prisma.user.count({ where }),
     ]);
 
     return {
@@ -166,5 +168,29 @@ export class UserService {
         tasksCompleted: user.tasksCompleted,
       },
     };
+  }
+
+  /**
+   * Promote a contributor to validator (admin-only; enforced at the route level).
+   * The new role takes effect on the user's next login/token refresh.
+   */
+  async promoteToValidator(userId: string) {
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+
+    if (!user) {
+      throw new AppError('User not found', 404);
+    }
+
+    if (user.role !== UserRole.CONTRIBUTOR) {
+      throw new AppError('Only contributors can be promoted to validator', 400);
+    }
+
+    const updatedUser = await prisma.user.update({
+      where: { id: userId },
+      data: { role: UserRole.VALIDATOR },
+    });
+
+    const { password: _password, ...userWithoutPassword } = updatedUser;
+    return userWithoutPassword;
   }
 }

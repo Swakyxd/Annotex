@@ -18,8 +18,9 @@ export class UserController {
   getAllUsers = asyncHandler(async (req: Request, res: Response) => {
     const page = parseInt(req.query.page as string) || 1;
     const limit = parseInt(req.query.limit as string) || 10;
+    const role = req.query.role as string | undefined;
 
-    const result = await this.userService.getAllUsers(page, limit);
+    const result = await this.userService.getAllUsers(page, limit, role);
 
     const response: ApiResponse = {
       success: true,
@@ -82,6 +83,23 @@ export class UserController {
       success: true,
       message: 'User statistics retrieved successfully',
       data: stats,
+      timestamp: new Date().toISOString(),
+    };
+
+    res.status(200).json(response);
+  });
+
+  /**
+   * Promote a contributor to validator (Admin only)
+   */
+  promoteToValidator = asyncHandler(async (req: Request, res: Response) => {
+    const { id } = req.params;
+    const user = await this.userService.promoteToValidator(id);
+
+    const response: ApiResponse = {
+      success: true,
+      message: 'User promoted to validator successfully',
+      data: user,
       timestamp: new Date().toISOString(),
     };
 

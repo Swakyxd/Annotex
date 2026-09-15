@@ -21,6 +21,7 @@ const navigationByRole: Record<string, NavItem[]> = {
     { href: "/dashboard/tasks", label: "Tasks", caption: "Create & manage tasks", roles: ["admin"] },
     { href: "/dashboard/review", label: "Label Review", caption: "Review & approve labels", roles: ["admin"] },
     { href: "/dashboard/users", label: "Users", caption: "Manage contributors", roles: ["admin"] },
+    { href: "/dashboard/promote", label: "Promote", caption: "Promote contributors to validator", roles: ["admin"] },
     { href: "/dashboard/payouts", label: "Payouts", caption: "Manage payouts", roles: ["admin"] },
     { href: "/dashboard/analytics", label: "Analytics", caption: "View metrics & insights", roles: ["admin"] },
   ],

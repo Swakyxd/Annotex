@@ -40,7 +40,9 @@ export const RegisterSchema = z
     password: z.string().min(8).regex(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/),
     firstName: z.string().trim().min(1).max(100),
     lastName: z.string().trim().min(1).max(100),
-    role: z.enum([UserRole.CONTRIBUTOR, UserRole.VALIDATOR]).optional(),
+    // Signup always creates a contributor; promotion to validator is an admin-only action
+    // (see UserService.promoteToValidator).
+    role: z.literal(UserRole.CONTRIBUTOR).optional(),
   })
   .strict();
 
