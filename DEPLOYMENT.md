@@ -246,7 +246,33 @@ Then try the real workflow: upload a dataset, confirm the images render, label s
 
 ### Redeploying after a code change
 
-You do not need the bootstrap script for this. Once the server is set up:
+**Pushes to `main` now redeploy automatically.** The `deploy` job in
+`.github/workflows/ci.yml` SSHes into the instance after `frontend` and
+`backend` CI pass, pulls `main`, rebuilds, and waits for `/health` to come
+back healthy — rolling back to the previous commit and rebuilding if it
+doesn't within ~2.5 minutes. Watch it in the repo's Actions tab.
+
+#### Setting up CD (one-time)
+
+The `deploy` job needs three secrets, added under *Settings → Environments →
+production → Secrets* (create the `production` environment if it doesn't
+exist yet):
+
+| Secret | Value |
+|---|---|
+| `EC2_HOST` | Your Elastic IP or domain |
+| `EC2_USER` | `ubuntu` |
+| `EC2_SSH_KEY` | Contents of your `annotex-key.pem` private key |
+
+Treat this key as a real production credential — it's a deploy-only key now
+living in GitHub Secrets rather than only on your laptop, so rotate it if
+your collaborator list ever shrinks.
+
+#### Manual redeploy (fallback)
+
+You do not need the bootstrap script for this, and CI/CD doesn't need to be
+involved. Once the server is set up, you can always do this by hand — for a
+hotfix, or if CD itself is down:
 
 ```bash
 cd ~/Annotex

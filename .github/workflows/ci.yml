@@ -62,3 +62,41 @@ jobs:
       - run: npm run lint
       - run: npm run build
       - run: npm test -- --runInBand
+
+  deploy:
+    name: Deploy to EC2
+    needs: [frontend, backend]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment: production
+    concurrency:
+      group: deploy-production
+      cancel-in-progress: false
+    steps:
+      - name: SSH deploy + health check (auto-rollback on failure)
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          command_timeout: 40m
+          script: |
+            set -euo pipefail
+            cd ~/Annotex
+            PREV_SHA=$(git rev-parse HEAD)
+            git fetch origin main
+            git reset --hard origin/main
+            sudo docker compose --env-file .env.production -f docker-compose.prod.yml up -d --build
+
+            for i in $(seq 1 30); do
+              if curl -fsS http://localhost:5000/health >/dev/null; then
+                echo "Deploy healthy at $(git rev-parse HEAD)."
+                exit 0
+              fi
+              sleep 5
+            done
+
+            echo "Health check failed after deploy — rolling back to $PREV_SHA"
+            git reset --hard "$PREV_SHA"
+            sudo docker compose --env-file .env.production -f docker-compose.prod.yml up -d --build
+            exit 1
