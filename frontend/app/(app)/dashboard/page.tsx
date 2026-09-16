@@ -536,7 +536,7 @@ export default function DashboardPage() {
                   </p>
                 </div>
               ))}
-              {!tasks.length ? <p className="text-sm text-muted">No tasks yet. Click "Fetch all tasks" above.</p> : null}
+              {!tasks.length ? <p className="text-sm text-muted">No tasks yet. Click &quot;Fetch all tasks&quot; above.</p> : null}
             </div>
           </article>
 
