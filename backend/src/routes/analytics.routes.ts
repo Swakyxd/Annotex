@@ -21,7 +21,7 @@ const analyticsController = new AnalyticsController();
 router.get(
   '/dashboard',
   authenticate,
-  authorize(UserRole.ADMIN),
+  authorize(UserRole.ADMIN, UserRole.VALIDATOR),
   analyticsController.getDashboardStats
 );
 
@@ -58,7 +58,7 @@ router.get(
 router.get(
   '/quality-metrics',
   authenticate,
-  authorize(UserRole.ADMIN, UserRole.VALIDATOR),
+  authorize(UserRole.ADMIN),
   analyticsController.getQualityMetrics
 );
 
