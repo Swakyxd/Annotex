@@ -30,7 +30,7 @@ router.post(
 router.get(
   '/pending',
   authenticate,
-  authorize(UserRole.CONTRIBUTOR),
+  authorize(UserRole.CONTRIBUTOR, UserRole.VALIDATOR, UserRole.ADMIN),
   payoutController.getPendingPayouts
 );
 

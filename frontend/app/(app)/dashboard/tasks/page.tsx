@@ -2,44 +2,46 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import { RefreshCw, ChevronLeft, ChevronRight } from "lucide-react";
+import { RefreshCw, Search, X } from "lucide-react";
 
 import { useAuth } from "@/components/providers/auth-provider";
+import { isAdmin, isContributor, isValidator } from "@/lib/role-utils";
 import { useTasks } from "@/hooks/use-tasks";
-
-const PAGE_SIZE = 20;
 
 export default function TasksPage() {
   const { user } = useAuth();
   const [statusFilter, setStatusFilter] = useState("");
-  const [page, setPage] = useState(1);
+  const [searchQuery, setSearchQuery] = useState("");
 
-  const { tasks, loading, error, pagination, refetch } = useTasks(
-    statusFilter
-      ? { status: statusFilter, limit: PAGE_SIZE, page }
-      : { limit: PAGE_SIZE, page }
+  const { tasks, loading, error, refetch } = useTasks(
+    statusFilter ? { status: statusFilter, limit: 100 } : { limit: 100 }
   );
 
-  // Safety net for any cached results not yet filtered by the API
   const filtered = useMemo(() => {
-    if (!statusFilter) return tasks;
-    return tasks.filter((t) => t.status === statusFilter);
-  }, [tasks, statusFilter]);
+    return tasks.filter((t) => {
+      if (statusFilter && t.status !== statusFilter) return false;
+      if (searchQuery.trim()) {
+        const q = searchQuery.toLowerCase();
+        const matches =
+          t.title.toLowerCase().includes(q) ||
+          t.description.toLowerCase().includes(q) ||
+          String(t.reward).includes(q);
+        if (!matches) return false;
+      }
+      return true;
+    });
+  }, [tasks, statusFilter, searchQuery]);
 
   const role = user?.role ?? "unknown";
-  const totalPages = pagination?.totalPages ?? 1;
-
-  const handleStatusChange = (value: string) => {
-    setStatusFilter(value);
-    setPage(1); // reset to first page on filter change
-  };
 
   const getStatusStyle = (status: string): { label: string; cardClass: string; badgeClass: string } => {
     switch (status) {
+      // Active — fully visible and actionable
       case "pending":
-        return { label: "Pending",     cardClass: "border-black/15 bg-white/65",           badgeClass: "border-black/10 bg-white/70 text-foreground" };
+        return { label: "Pending",     cardClass: "border-black/15 bg-white/65",          badgeClass: "border-black/10 bg-white/70 text-foreground" };
       case "in_progress":
-        return { label: "In Progress", cardClass: "border-black/15 bg-white/70",           badgeClass: "border-black/10 bg-black/5 text-foreground" };
+        return { label: "In Progress", cardClass: "border-black/15 bg-white/70",          badgeClass: "border-black/10 bg-black/5 text-foreground" };
+      // Done — all greyed out equally
       case "labeled":
         return { label: "Labeled",     cardClass: "border-black/6 bg-white/30 opacity-45", badgeClass: "border-black/5 bg-white/50 text-black/35" };
       case "validated":
@@ -54,9 +56,10 @@ export default function TasksPage() {
   };
 
   return (
+    /* flex-1 + min-h-0: fills the space the shell reserves for page content without extending beyond the viewport */
     <div className="flex min-h-0 flex-1 flex-col gap-4">
 
-      {/* ── Header ── */}
+      {/* ── Sticky header ── */}
       <article className="card shrink-0 rounded-[2rem] px-6 py-5">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
@@ -65,10 +68,29 @@ export default function TasksPage() {
             <p className="mt-1 text-sm text-muted">Browse tasks and open details to submit labels.</p>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="relative min-w-[200px]">
+              <Search className="absolute left-3 top-1/2 size-3.5 -translate-y-1/2 text-muted" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search tasks..."
+                className="field w-full pl-8 pr-7 py-2 text-sm"
+              />
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={() => setSearchQuery("")}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-muted hover:text-foreground"
+                >
+                  <X className="size-3" />
+                </button>
+              )}
+            </div>
             <select
               className="field py-2 text-sm"
-              onChange={(e) => handleStatusChange(e.target.value)}
+              onChange={(e) => setStatusFilter(e.target.value)}
               value={statusFilter}
             >
               <option value="">All statuses</option>
@@ -98,13 +120,11 @@ export default function TasksPage() {
         </div>
       )}
 
-      {/* ── Task list ── */}
+      {/* ── Scrollable task list — fills remaining height, scrolls internally ── */}
       <article className="card flex min-h-0 flex-1 flex-col rounded-[2rem] p-5 md:p-6">
         <div className="flex shrink-0 items-center justify-between gap-3 pb-4">
           <span className="eyebrow text-xs text-muted">
-            {loading
-              ? "Loading…"
-              : `${pagination?.total ?? filtered.length} task${(pagination?.total ?? filtered.length) !== 1 ? "s" : ""}`}
+            {loading ? "Loading…" : `${filtered.length} task${filtered.length !== 1 ? "s" : ""}`}
           </span>
           {(role === "validator" || role === "admin") && (
             <Link className="text-xs text-muted underline hover:text-foreground transition" href="/dashboard/review">
@@ -134,11 +154,15 @@ export default function TasksPage() {
                 const progress = task.requiredLabels
                   ? Math.min((task.submittedLabels / task.requiredLabels) * 100, 100)
                   : 0;
-                const isAtCapacity = task.submittedLabels >= task.requiredLabels;
-                const canOpen = !isAtCapacity && !task.hasSubmittedLabel;
-                const { label, cardClass, badgeClass } = getStatusStyle(
-                  canOpen && task.submittedLabels > 0 ? "pending" : task.status
-                );
+                const { label, cardClass, badgeClass } = getStatusStyle(task.status);
+                // Admins & validators can open any task for review purposes.
+                // Contributors can only open tasks they haven't yet labelled.
+                const canOpen =
+                  isAdmin(user?.role) || isValidator(user?.role)
+                    ? true
+                    : isContributor(user?.role)
+                      ? task.status === 'pending' || task.status === 'in_progress'
+                      : false;
 
                 return (
                   <div
@@ -178,31 +202,6 @@ export default function TasksPage() {
             </div>
           )}
         </div>
-
-        {/* ── Pagination controls ── */}
-        {!loading && totalPages > 1 && (
-          <div className="mt-4 flex shrink-0 items-center justify-between border-t border-black/8 pt-4">
-            <button
-              className="btn-secondary flex items-center gap-1.5 px-4 py-2 text-sm disabled:opacity-40"
-              disabled={page <= 1}
-              onClick={() => setPage((p) => p - 1)}
-              type="button"
-            >
-              <ChevronLeft className="size-4" /> Prev
-            </button>
-            <span className="text-xs text-muted">
-              Page {page} of {totalPages}
-            </span>
-            <button
-              className="btn-secondary flex items-center gap-1.5 px-4 py-2 text-sm disabled:opacity-40"
-              disabled={page >= totalPages}
-              onClick={() => setPage((p) => p + 1)}
-              type="button"
-            >
-              Next <ChevronRight className="size-4" />
-            </button>
-          </div>
-        )}
       </article>
     </div>
   );

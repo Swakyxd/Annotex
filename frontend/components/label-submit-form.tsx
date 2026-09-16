@@ -38,6 +38,7 @@ export function LabelSubmitForm({
   const [formData, setFormData] = useState<LabelFormData>({ value: '', confidence: 0.5, notes: '' });
   const [errors, setErrors] = useState<LabelFormErrors>({});
   const [showSuggestions, setShowSuggestions] = useState(false);
+  const [startTime] = useState<number>(() => Date.now());
 
   const effectiveSuggestions =
     labelOptions && labelOptions.length > 0 ? labelOptions : (LABEL_SUGGESTIONS.Classification ?? []);
@@ -75,7 +76,12 @@ export function LabelSubmitForm({
       e.preventDefault();
       const validationErrors = validateLabelForm(formData);
       if (hasFormErrors(validationErrors)) { setErrors(validationErrors); return; }
-      const result = await submitLabel(taskId, { value: formData.value.trim(), confidence: formData.confidence });
+      const timeSpentSeconds = Math.max(1, Math.round((Date.now() - startTime) / 1000));
+      const result = await submitLabel(taskId, {
+        value: formData.value.trim(),
+        confidence: formData.confidence,
+        timeSpentSeconds,
+      });
       if (result) {
         setFormData({ value: '', confidence: 0.5, notes: '' });
         setErrors({});
@@ -83,7 +89,7 @@ export function LabelSubmitForm({
         setTimeout(() => { setFormData({ value: '', confidence: 0.5, notes: '' }); }, 3000);
       }
     },
-    [formData, submitLabel, taskId, onSuccess]
+    [formData, submitLabel, taskId, onSuccess, startTime]
   );
 
   const confidenceLevel = getConfidenceLevel(formData.confidence);

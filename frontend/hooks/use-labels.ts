@@ -7,12 +7,13 @@ export interface Label {
   id: string;
   value: string;
   confidence: number;
+  isAccepted?: boolean;
+  isRejected?: boolean;
+  rejectionReason?: string | null;
+  timeSpentSeconds?: number;
   contributorId: string;
   taskId: string;
   createdAt: string;
-  isAccepted?: boolean;
-  isRejected?: boolean;
-  rejectionReason?: string;
   contributor?: {
     id: string;
     firstName?: string;
@@ -22,6 +23,7 @@ export interface Label {
   task?: {
     id: string;
     title: string;
+    reward?: number;
   };
 }
 
