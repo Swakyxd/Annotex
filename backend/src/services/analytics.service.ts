@@ -1,5 +1,5 @@
 import { prisma } from '../config/prisma.js';
-import { TaskStatus, UserRole } from '../types/index.js';
+import { TaskStatus } from '../types/index.js';
 
 export class AnalyticsService {
   /**
@@ -14,6 +14,7 @@ export class AnalyticsService {
       totalDatasets,
       totalLabels,
       acceptedLabels,
+      rejectedLabels,
     ] = await Promise.all([
       prisma.user.count(),
       prisma.user.count({ where: { isActive: true } }),
@@ -22,6 +23,7 @@ export class AnalyticsService {
       prisma.dataset.count(),
       prisma.label.count(),
       prisma.label.count({ where: { isAccepted: true } }),
+      prisma.label.count({ where: { isRejected: true } }),
     ]);
 
     // Task status distribution
@@ -50,6 +52,10 @@ export class AnalyticsService {
         completedTasks,
         totalDatasets,
         totalLabels,
+        acceptedLabels,
+        rejectedLabels,
+        totalAccepted: acceptedLabels,
+        totalRejected: rejectedLabels,
         overallAccuracy: overallAccuracy.toFixed(2),
       },
       taskDistribution: taskStatusCounts.map((item) => ({
@@ -76,11 +82,13 @@ export class AnalyticsService {
       where: { contributorId: userId },
     });
 
-    const [acceptedLabels, rejectedLabels] = await Promise.all([
-      prisma.label.count({ where: { contributorId: userId, isAccepted: true } }),
-      prisma.label.count({ where: { contributorId: userId, isRejected: true } }),
-    ]);
-    const reviewedLabels = acceptedLabels + rejectedLabels;
+    const acceptedLabels = await prisma.label.count({
+      where: { contributorId: userId, isAccepted: true },
+    });
+
+    const rejectedLabels = await prisma.label.count({
+      where: { contributorId: userId, isRejected: true },
+    });
 
     // Average time spent per label
     const avgTimeResult = await prisma.label.aggregate({
@@ -110,7 +118,7 @@ export class AnalyticsService {
         totalLabels,
         acceptedLabels,
         rejectedLabels,
-        accuracyRate: reviewedLabels > 0 ? ((acceptedLabels / reviewedLabels) * 100).toFixed(1) : 'N/A',
+        accuracyRate: totalLabels > 0 ? ((acceptedLabels / totalLabels) * 100).toFixed(2) : '0',
         averageTimePerLabel: avgTimeResult._avg.timeSpentSeconds || 0,
         totalEarnings: user.totalEarnings,
       },
@@ -125,77 +133,57 @@ export class AnalyticsService {
    * Get quality metrics
    */
   async getQualityMetrics() {
-    const reviewedLabelWhere = {
-      OR: [{ isAccepted: true }, { isRejected: true }],
-    };
+    // Average consensus scores
+    const tasks = await prisma.task.findMany({
+      where: { status: TaskStatus.VALIDATED },
+      include: { labels: true },
+    });
 
-    const [reviewedLabels, approvedLabels, reviewedTasks, contributors, submittedCounts, acceptedCounts, reviewedCounts] = await Promise.all([
-      prisma.label.count({ where: reviewedLabelWhere }),
-      prisma.label.count({ where: { isAccepted: true } }),
-      prisma.label.findMany({
-        where: reviewedLabelWhere,
-        select: { taskId: true },
-        distinct: ['taskId'],
-      }),
-      prisma.user.findMany({
-        where: { role: UserRole.CONTRIBUTOR, isActive: true },
-        select: { id: true, firstName: true, lastName: true },
-      }),
-      prisma.label.groupBy({
-        by: ['contributorId'],
-        _count: { _all: true },
-      }),
-      prisma.label.groupBy({
-        by: ['contributorId'],
-        where: { isAccepted: true },
-        _count: { _all: true },
-      }),
-      prisma.label.groupBy({
-        by: ['contributorId'],
-        where: { OR: [{ isAccepted: true }, { isRejected: true }] },
-        _count: { _all: true },
-      }),
-    ]);
+    let totalConsensusScore = 0;
+    let validatedTasksCount = 0;
+
+    for (const task of tasks) {
+      if (task.labels.length >= task.requiredLabels) {
+        const labelCounts = new Map<string, number>();
+        task.labels.forEach((label) => {
+          const count = labelCounts.get(label.value) || 0;
+          labelCounts.set(label.value, count + 1);
+        });
+
+        let maxCount = 0;
+        labelCounts.forEach((count) => {
+          if (count > maxCount) {
+            maxCount = count;
+          }
+        });
+
+        const consensusScore = maxCount / task.labels.length;
+        totalConsensusScore += consensusScore;
+        validatedTasksCount++;
+      }
+    }
 
     const averageConsensusScore =
-      reviewedLabels > 0 ? (approvedLabels / reviewedLabels) * 100 : 0;
+      validatedTasksCount > 0 ? totalConsensusScore / validatedTasksCount : 0;
 
-    const submittedByContributor = new Map(
-      submittedCounts.map((item) => [item.contributorId, item._count._all])
-    );
-    const acceptedByContributor = new Map(
-      acceptedCounts.map((item) => [item.contributorId, item._count._all])
-    );
-    const reviewedByContributor = new Map(
-      reviewedCounts.map((item) => [item.contributorId, item._count._all])
-    );
-
-    const contributorsWithPerformance = contributors
-      .map((contributor) => {
-        const labelsSubmitted = submittedByContributor.get(contributor.id) || 0;
-        const acceptedLabels = acceptedByContributor.get(contributor.id) || 0;
-        const reviewedLabels = reviewedByContributor.get(contributor.id) || 0;
-
-        return {
-          ...contributor,
-          accuracyRate:
-            reviewedLabels > 0 ? Number(((acceptedLabels / reviewedLabels) * 100).toFixed(1)) : null,
-          tasksCompleted: labelsSubmitted,
-          labelsSubmitted,
-          reviewedLabels,
-        };
-      })
-      .filter((contributor) => contributor.labelsSubmitted > 0);
-    const topPerformers = contributorsWithPerformance
-      .sort((left, right) => (right.accuracyRate ?? -1) - (left.accuracyRate ?? -1))
-      .slice(0, 10);
+    // Top performers
+    const topPerformers = await prisma.user.findMany({
+      where: { isActive: true },
+      orderBy: { accuracyRate: 'desc' },
+      take: 10,
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        email: true,
+        accuracyRate: true,
+        tasksCompleted: true,
+      },
+    });
 
     return {
-      averageConsensusScore: averageConsensusScore.toFixed(1),
-      validatedTasks: reviewedTasks.length,
-      reviewedLabels,
-      approvedLabels,
-      activeContributors: contributorsWithPerformance.length,
+      averageConsensusScore: averageConsensusScore.toFixed(2),
+      validatedTasks: validatedTasksCount,
       topPerformers,
     };
   }
