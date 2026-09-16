@@ -48,22 +48,51 @@ export class ValidationService {
     const consensusScore = maxCount / labels.length;
     const consensusReached = consensusScore >= task.consensusThreshold;
 
-    // Update label acceptance status
+    // Update label acceptance status and track contributors
+    const contributorOutcomes = new Map<string, boolean>();
+
     for (const label of labels) {
+      const isAccepted = label.value === majorityLabel && consensusReached;
       await prisma.label.update({
         where: { id: label.id },
-        data:
-          label.value === majorityLabel && consensusReached
-            ? {
-                isAccepted: true,
-                isRejected: false,
-                rejectionReason: null,
-              }
-            : {
-                isAccepted: false,
-                isRejected: true,
-                rejectionReason: 'Does not match consensus',
-              },
+        data: isAccepted
+          ? {
+              isAccepted: true,
+              isRejected: false,
+              rejectionReason: null,
+            }
+          : {
+              isAccepted: false,
+              isRejected: true,
+              rejectionReason: 'Does not match consensus',
+            },
+      });
+      contributorOutcomes.set(label.contributorId, isAccepted);
+    }
+
+    // Update contributor statistics & accuracy rates
+    for (const [contributorId, isAccepted] of contributorOutcomes.entries()) {
+      if (isAccepted) {
+        await prisma.user.update({
+          where: { id: contributorId },
+          data: {
+            tasksCompleted: { increment: 1 },
+          },
+        });
+      }
+
+      const totalLabels = await prisma.label.count({
+        where: { contributorId },
+      });
+      const acceptedLabels = await prisma.label.count({
+        where: { contributorId, isAccepted: true },
+      });
+
+      await prisma.user.update({
+        where: { id: contributorId },
+        data: {
+          accuracyRate: totalLabels > 0 ? (acceptedLabels / totalLabels) * 100 : 0,
+        },
       });
     }
 
