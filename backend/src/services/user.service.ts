@@ -193,4 +193,41 @@ export class UserService {
     const { password: _password, ...userWithoutPassword } = updatedUser;
     return userWithoutPassword;
   }
+
+  /**
+   * Demote a validator back to contributor (admin-only; enforced at the route level).
+   */
+  async demoteToContributor(userId: string) {
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+
+    if (!user) {
+      throw new AppError('User not found', 404);
+    }
+
+    if (user.role !== UserRole.VALIDATOR) {
+      throw new AppError('Only validators can be demoted to contributor', 400);
+    }
+
+    const updatedUser = await prisma.user.update({
+      where: { id: userId },
+      data: { role: UserRole.CONTRIBUTOR },
+    });
+
+    const { password: _password, ...userWithoutPassword } = updatedUser;
+    return userWithoutPassword;
+  }
+
+  /**
+   * Delete a user by ID
+   */
+  async deleteUser(userId: string) {
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    if (!user) throw new AppError('User not found', 404);
+
+    // Ensure we delete dependent data first to avoid foreign key constraints
+    await prisma.label.deleteMany({ where: { contributorId: userId } });
+    await prisma.transaction.deleteMany({ where: { userId } });
+    
+    await prisma.user.delete({ where: { id: userId } });
+  }
 }

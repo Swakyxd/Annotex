@@ -146,4 +146,12 @@ router.delete(
   taskController.unassignTask
 );
 
+router.delete(
+  '/:id',
+  authenticate,
+  authorize(UserRole.ADMIN),
+  validate([param('id').isUUID()]),
+  taskController.deleteTask
+);
+
 export default router;

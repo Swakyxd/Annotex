@@ -151,6 +151,7 @@ exports.Prisma.DatasetScalarFieldEnum = {
   rewardPerRecord: 'rewardPerRecord',
   maxLabelsPerRecord: 'maxLabelsPerRecord',
   consensusThreshold: 'consensusThreshold',
+  deadline: 'deadline',
   schema: 'schema',
   validationRules: 'validationRules',
   isActive: 'isActive',

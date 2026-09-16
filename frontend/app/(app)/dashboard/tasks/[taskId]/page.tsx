@@ -398,34 +398,35 @@ export default function TaskDetailsPage() {
         </div>
       </div>
 
-      {/* ── Main content area: switches to side-by-side when labeling form is active ── */}
-      <div className={`p-6 ${showForm ? 'flex gap-5 items-start' : 'space-y-5'}`}>
-
-        {/* Left column: always visible content */}
-        <div className={`space-y-5 ${showForm ? 'w-1/2 shrink-0 sticky top-0' : ''}`}>
-          {taskError && (
-            <div className="rounded-2xl border border-black/10 bg-white/70 px-4 py-3 text-sm" role="alert">
-              {taskError}
-            </div>
-          )}
-
-          {/* Stats row */}
-          <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-            {[
-              { label: 'Reward', value: `◎ ${task.reward.toFixed(2)}` },
-              { label: 'Dataset', value: task.dataset?.name ?? 'Unknown' },
-              { label: 'Required', value: `${task.requiredLabels} labels` },
-              { label: 'Consensus', value: `${(task.consensusThreshold * 100).toFixed(0)}%` },
-            ].map(({ label, value }) => (
-              <div key={label} className="rounded-[1.75rem] border border-black/8 bg-white/65 p-4">
-                <p className="eyebrow text-[0.65rem] text-muted">{label}</p>
-                <p className="mt-2 font-mono text-xl font-semibold tracking-[-0.04em] truncate">{value}</p>
-              </div>
-            ))}
+      {/* ── Main content area ── */}
+      <div className="p-6 space-y-5">
+        {taskError && (
+          <div className="rounded-2xl border border-black/10 bg-white/70 px-4 py-3 text-sm" role="alert">
+            {taskError}
           </div>
+        )}
 
-          {/* Description */}
-          <article className="card rounded-[2rem] p-6">
+        {/* Stats row - Always full width */}
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+          {[
+            { label: 'Reward', value: `◎ ${task.reward.toFixed(2)}` },
+            { label: 'Dataset', value: task.dataset?.name ?? 'Unknown' },
+            { label: 'Required', value: `${task.requiredLabels} labels` },
+            { label: 'Consensus', value: `${(task.consensusThreshold * 100).toFixed(0)}%` },
+          ].map(({ label, value }) => (
+            <div key={label} className="rounded-[1.75rem] border border-black/8 bg-white/65 p-4">
+              <p className="eyebrow text-[0.65rem] text-muted">{label}</p>
+              <p className="mt-2 font-mono text-xl font-semibold tracking-[-0.04em] truncate">{value}</p>
+            </div>
+          ))}
+        </div>
+
+        {/* Switches to side-by-side when labeling form is active */}
+        <div className={showForm ? 'flex gap-5 items-start' : 'space-y-5'}>
+          {/* Left column: always visible content */}
+          <div className={`space-y-5 ${showForm ? 'w-1/2 shrink-0 sticky top-0' : ''}`}>
+            {/* Description */}
+            <article className="card rounded-[2rem] p-6">
             <p className="eyebrow text-xs text-muted">About this task</p>
             <h2 className="mt-2 font-mono text-2xl font-semibold tracking-[-0.04em]">Description</h2>
             <p className="mt-4 text-sm leading-7 text-muted">{task.description}</p>
@@ -610,6 +611,7 @@ export default function TaskDetailsPage() {
             </div>
           )}
         </div>
+      </div>
       </div>
     </div>
   );

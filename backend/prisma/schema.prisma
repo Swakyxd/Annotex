@@ -52,6 +52,7 @@ model Dataset {
   rewardPerRecord Float         @default(0)
   maxLabelsPerRecord Int        @default(3)
   consensusThreshold Float      @default(0.67)
+  deadline        DateTime?
   schema          Json?
   validationRules Json?
   isActive        Boolean       @default(true)

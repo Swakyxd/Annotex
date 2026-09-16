@@ -169,4 +169,62 @@ router.patch(
   userController.promoteToValidator
 );
 
+/**
+ * @swagger
+ * /users/{id}/demote:
+ *   patch:
+ *     summary: Demote a validator back to contributor (Admin only)
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: User demoted to contributor successfully
+ *       400:
+ *         description: User is not a validator
+ *       404:
+ *         description: User not found
+ */
+router.patch(
+  '/:id/demote',
+  authenticate,
+  authorize(UserRole.ADMIN),
+  validate([param('id').isUUID()]),
+  userController.demoteToContributor
+);
+
+/**
+ * @swagger
+ * /users/{id}:
+ *   delete:
+ *     summary: Delete a user (Admin only)
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: User deleted successfully
+ *       404:
+ *         description: User not found
+ */
+router.delete(
+  '/:id',
+  authenticate,
+  authorize(UserRole.ADMIN),
+  validate([param('id').isUUID()]),
+  userController.deleteUser
+);
+
 export default router;

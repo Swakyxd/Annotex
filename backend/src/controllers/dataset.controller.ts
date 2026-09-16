@@ -60,6 +60,7 @@ export class DatasetController {
       totalRewardSOL,
       maxLabelsPerRecord,
       consensusThreshold,
+      deadline,
     } = parsed.data;
     const dataset = await this.datasetService.uploadDataset(
       name,
@@ -73,6 +74,7 @@ export class DatasetController {
         totalRewardSOL,
         maxLabelsPerRecord,
         consensusThreshold,
+        deadline: deadline ?? null,
       }
     );
 

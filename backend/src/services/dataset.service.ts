@@ -227,6 +227,7 @@ export class DatasetService {
       totalRewardSOL?: number;
       maxLabelsPerRecord?: number;
       consensusThreshold?: number;
+      deadline?: Date | null;
     }
   ) {
     // Determine format from file extension
@@ -289,6 +290,7 @@ export class DatasetService {
           rewardPerRecord,
           maxLabelsPerRecord: options?.maxLabelsPerRecord ?? 3,
           consensusThreshold: options?.consensusThreshold ?? 0.67,
+          deadline: options?.deadline ?? null,
           createdById,
         },
       });

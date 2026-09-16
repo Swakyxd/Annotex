@@ -281,4 +281,15 @@ export class TaskService {
 
     return updatedTask;
   }
+  /**
+   * Delete a task by ID (admin only)
+   */
+  async deleteTask(taskId: string) {
+    const task = await prisma.task.findUnique({ where: { id: taskId } });
+    if (!task) throw new AppError('Task not found', 404);
+    // Labels cascade-delete via prisma schema onDelete, but delete explicitly for safety
+    await prisma.label.deleteMany({ where: { taskId } });
+    await prisma.task.delete({ where: { id: taskId } });
+    logger.info(`Task ${taskId} deleted`);
+  }
 }
