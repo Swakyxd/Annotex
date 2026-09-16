@@ -1,7 +1,21 @@
 "use client";
 
-import { FormEvent, useState } from "react";
-import { BarChart3, CheckCircle2, CircleDollarSign, ClipboardList, RefreshCw, Wallet } from "lucide-react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
+import {
+  Award,
+  BarChart3,
+  CheckCircle2,
+  CircleDollarSign,
+  ClipboardList,
+  Clock,
+  Eye,
+  EyeOff,
+  RefreshCw,
+  Search,
+  Wallet,
+  X,
+  XCircle,
+} from "lucide-react";
 import { useRouter } from "next/navigation";
 
 import { useAuth } from "@/components/providers/auth-provider";
@@ -32,10 +46,25 @@ type UserPerformance = {
   statistics?: {
     totalLabels: number;
     acceptedLabels: number;
+    rejectedLabels?: number;
     accuracyRate: string;
     averageTimePerLabel: number;
     totalEarnings: number;
   };
+};
+
+type PlatformStats = {
+  totalUsers: number;
+  activeUsers: number;
+  totalTasks: number;
+  completedTasks: number;
+  totalDatasets: number;
+  totalLabels: number;
+  acceptedLabels: number;
+  rejectedLabels: number;
+  totalAccepted?: number;
+  totalRejected?: number;
+  overallAccuracy: string;
 };
 
 type PendingPayoutSummary = {
@@ -92,6 +121,11 @@ export default function DashboardPage() {
   const [latestPaymentRequest, setLatestPaymentRequest] = useState<PaymentRequest | null>(null);
   const [pendingPayoutSummary, setPendingPayoutSummary] = useState<PendingPayoutSummary | null>(null);
   const [datasets, setDatasets] = useState<DatasetSummary[]>([]);
+  const [platformStats, setPlatformStats] = useState<PlatformStats | null>(null);
+  const [showWallet, setShowWallet] = useState<boolean>(false);
+  const [taskSearch, setTaskSearch] = useState<string>("");
+  const [taskStatusFilter, setTaskStatusFilter] = useState<string>("all");
+  const [validatorSearch, setValidatorSearch] = useState<string>("");
 
   const canCallApi = Boolean(accessToken);
 
@@ -269,6 +303,65 @@ export default function DashboardPage() {
     }, "Datasets loaded.");
   };
 
+  const fetchPlatformStats = async () => {
+    await withFeedback(async () => {
+      const data = await request<{ overview: PlatformStats }>("/analytics/dashboard");
+      setPlatformStats(data.overview);
+    }, "Platform statistics loaded.");
+  };
+
+  useEffect(() => {
+    if (!accessToken) return;
+    void fetchTasks();
+    if (permissions.isContributor()) {
+      void fetchUserPerformance();
+      void fetchPendingPayouts();
+      void fetchTransactions();
+    }
+    if (permissions.isValidator()) {
+      void fetchPlatformStats();
+      void fetchUserPerformance();
+    }
+    if (permissions.isAdmin()) {
+      void fetchDatasets();
+      void fetchPlatformStats();
+      void fetchUserPerformance();
+      void fetchTransactions();
+    }
+  }, [accessToken, user?.role]);
+
+  useEffect(() => {
+    if (user?.walletAddress) {
+      setWalletAddress(user.walletAddress);
+    }
+  }, [user?.walletAddress]);
+
+  const filteredTasks = useMemo(() => {
+    return tasks.filter((task) => {
+      if (taskStatusFilter !== "all" && task.status !== taskStatusFilter) return false;
+      if (taskSearch.trim()) {
+        const q = taskSearch.toLowerCase();
+        const matches =
+          task.title.toLowerCase().includes(q) ||
+          task.description.toLowerCase().includes(q) ||
+          String(task.reward).includes(q);
+        if (!matches) return false;
+      }
+      return true;
+    });
+  }, [tasks, taskStatusFilter, taskSearch]);
+
+  const filteredValidatorTasks = useMemo(() => {
+    return tasks.filter((task) => {
+      if (!validatorSearch.trim()) return true;
+      const q = validatorSearch.toLowerCase();
+      return (
+        task.title.toLowerCase().includes(q) ||
+        task.description.toLowerCase().includes(q)
+      );
+    });
+  }, [tasks, validatorSearch]);
+
   const deleteDataset = async (dataset: DatasetSummary) => {
     const confirmed = window.confirm(`Delete dataset \"${dataset.name}\"? This will remove its records, tasks, and labels.`);
     if (!confirmed) {
@@ -377,7 +470,7 @@ export default function DashboardPage() {
   };
 
   return (
-    <section className="space-y-8">
+    <section className={permissions.isContributor() ? "flex h-[calc(100vh-10rem)] min-h-0 flex-col gap-5 overflow-hidden" : "space-y-8"}>
       {/* Welcome Section */}
       {!permissions.isContributor() && <div className="card rounded-4xl p-6 md:p-8">
         <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
@@ -406,9 +499,12 @@ export default function DashboardPage() {
       <AdminOnly role={user?.role}>
         <div className="space-y-5">
           {/* Admin Action Buttons */}
-          <div className="grid gap-4 md:grid-cols-3">
+          <div className="grid gap-4 md:grid-cols-4">
             <button className="btn-secondary" disabled={!canCallApi || isBusy} onClick={fetchTasks} type="button">
               Fetch all tasks
+            </button>
+            <button className="btn-secondary" disabled={!canCallApi || isBusy} onClick={fetchUserPerformance} type="button">
+              View statistics
             </button>
             <button className="btn-secondary" disabled={!canCallApi || isBusy} onClick={fetchTransactions} type="button">
               View transactions
@@ -475,6 +571,16 @@ export default function DashboardPage() {
             </article>
           </div>
 
+          {/* Label Review Section */}
+          <article className="card rounded-[1.75rem] p-6">
+            <h2 className="font-mono text-2xl font-semibold tracking-[-0.04em]">Label review queue</h2>
+            <p className="mt-2 text-sm text-muted">Approve or reject submitted labels from contributors.</p>
+            <div className="mt-4 rounded-lg border border-black/10 bg-white/50 p-4 text-sm text-muted">
+              <p>Label review functionality: API integration pending</p>
+              <p className="mt-2">Buttons for approve/reject will appear once backend endpoints are ready.</p>
+            </div>
+          </article>
+
           {/* Dataset Management */}
           <article className="card rounded-[1.75rem] p-6">
             <div className="flex items-center justify-between gap-3">
@@ -487,7 +593,7 @@ export default function DashboardPage() {
               </button>
             </div>
 
-            <div className="mt-4 space-y-3 max-h-60 overflow-y-auto">
+            <div className="mt-4 space-y-3 max-h-96 overflow-y-auto">
               {datasets.map((dataset) => (
                 <div key={dataset.id} className="rounded-lg border border-black/10 bg-white/60 p-4">
                   <div className="flex items-start justify-between gap-3">
@@ -585,14 +691,65 @@ export default function DashboardPage() {
 
       {/* Validator Dashboard */}
       <ValidatorOnly role={user?.role}>
-        <div className="space-y-5">
+        <div className="space-y-6">
+          {/* Platform-wide Metrics Grid */}
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="rounded-3xl border border-black/8 bg-white/65 p-4">
+              <div className="flex items-center justify-between">
+                <p className="eyebrow text-xs text-muted">Platform Total</p>
+                <ClipboardList className="size-4 text-muted" aria-hidden="true" />
+              </div>
+              <p className="mt-3 font-mono text-2xl font-semibold tracking-[-0.04em]">
+                {platformStats?.totalLabels ?? "—"}
+              </p>
+              <p className="mt-1 text-xs text-muted">Total platform labels</p>
+            </div>
+
+            <div className="rounded-3xl border border-black/8 bg-white/65 p-4">
+              <div className="flex items-center justify-between">
+                <p className="eyebrow text-xs text-muted">Platform</p>
+                <CheckCircle2 className="size-4 text-emerald-600" aria-hidden="true" />
+              </div>
+              <p className="mt-3 font-mono text-2xl font-semibold tracking-[-0.04em] text-emerald-700">
+                {platformStats?.totalAccepted ?? platformStats?.acceptedLabels ?? "—"}
+              </p>
+              <p className="mt-1 text-xs text-muted">Total accepted labels</p>
+            </div>
+
+            <div className="rounded-3xl border border-black/8 bg-white/65 p-4">
+              <div className="flex items-center justify-between">
+                <p className="eyebrow text-xs text-muted">Platform</p>
+                <XCircle className="size-4 text-red-600" aria-hidden="true" />
+              </div>
+              <p className="mt-3 font-mono text-2xl font-semibold tracking-[-0.04em] text-red-700">
+                {platformStats?.totalRejected ?? platformStats?.rejectedLabels ?? "—"}
+              </p>
+              <p className="mt-1 text-xs text-muted">Total rejected labels</p>
+            </div>
+
+            <div className="rounded-3xl border border-black/8 bg-white/65 p-4">
+              <div className="flex items-center justify-between">
+                <p className="eyebrow text-xs text-muted">Platform</p>
+                <Award className="size-4 text-muted" aria-hidden="true" />
+              </div>
+              <p className="mt-3 font-mono text-2xl font-semibold tracking-[-0.04em]">
+                {platformStats?.overallAccuracy ? `${platformStats.overallAccuracy}%` : "—"}
+              </p>
+              <p className="mt-1 text-xs text-muted">Overall accuracy</p>
+            </div>
+          </div>
+
           {/* Validator Action Buttons */}
-          <div className="grid gap-4 md:grid-cols-2">
+          <div className="flex flex-wrap items-center gap-3">
             <button className="btn-secondary" disabled={!canCallApi || isBusy} onClick={fetchTasks} type="button">
-              Load labels to review
+              <RefreshCw className={`mr-2 inline-block size-4 ${isBusy ? "animate-spin" : ""}`} />
+              Refresh review queue
+            </button>
+            <button className="btn-secondary" disabled={!canCallApi || isBusy} onClick={fetchPlatformStats} type="button">
+              Refresh platform metrics
             </button>
             <button className="btn-secondary" disabled={!canCallApi || isBusy} onClick={fetchUserPerformance} type="button">
-              View metrics
+              My reviewer metrics
             </button>
           </div>
 
@@ -600,19 +757,47 @@ export default function DashboardPage() {
 
           {/* Label Review Queue */}
           <article className="card rounded-[1.75rem] p-6">
-            <h2 className="font-mono text-2xl font-semibold tracking-[-0.04em]">Labels pending review</h2>
-            <p className="mt-2 text-sm text-muted">Review submitted labels and approve quality work from contributors.</p>
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <h2 className="font-mono text-2xl font-semibold tracking-[-0.04em]">Labels pending review</h2>
+                <p className="mt-1 text-sm text-muted">Review submitted labels and approve quality work from contributors.</p>
+              </div>
+              <span className="rounded-full border border-black/10 bg-white/70 px-3 py-1.5 text-xs font-semibold text-muted">
+                {filteredValidatorTasks.length} pending
+              </span>
+            </div>
 
-            <div className="mt-4 space-y-3">
-              {tasks.length > 0 ? (
-                tasks.map((task) => (
+            {/* Validator task search */}
+            <div className="relative mt-4">
+              <Search className="absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-muted" />
+              <input
+                type="text"
+                value={validatorSearch}
+                onChange={(e) => setValidatorSearch(e.target.value)}
+                placeholder="Search pending tasks by title or description..."
+                className="field w-full pl-9 pr-8 text-sm"
+              />
+              {validatorSearch && (
+                <button
+                  type="button"
+                  onClick={() => setValidatorSearch("")}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted hover:text-foreground"
+                >
+                  <X className="size-3.5" />
+                </button>
+              )}
+            </div>
+
+            <div className="mt-4 space-y-3 max-h-[30rem] overflow-y-auto pr-1">
+              {filteredValidatorTasks.length > 0 ? (
+                filteredValidatorTasks.map((task) => (
                   <div key={task.id} className="rounded-lg border border-black/10 bg-white/50 p-4">
                     <div className="flex items-start justify-between gap-4">
                       <div className="flex-1">
                         <p className="font-semibold">{task.title}</p>
                         <p className="mt-1 text-sm text-muted">{task.description}</p>
                         <p className="mt-2 text-xs text-muted">
-                          Labels: {task.submittedLabels}/{task.requiredLabels} | Reward: {task.reward}
+                          Labels: {task.submittedLabels}/{task.requiredLabels} | Reward: {task.reward} SOL
                         </p>
                       </div>
                       <div className="flex flex-col gap-2">
@@ -637,26 +822,30 @@ export default function DashboardPage() {
                   </div>
                 ))
               ) : (
-                <p className="text-sm text-muted">No labels pending review. Load labels to see items.</p>
+                <p className="text-sm text-muted">No labels pending review matching your criteria.</p>
               )}
             </div>
           </article>
 
           {/* Quality Metrics */}
           <article className="card rounded-[1.75rem] p-6">
-            <h2 className="font-mono text-2xl font-semibold tracking-[-0.04em]">Quality metrics</h2>
-            <dl className="mt-4 space-y-2 text-sm">
-              <div className="flex justify-between gap-3">
-                <dt className="text-muted">Labels reviewed</dt>
-                <dd>{performance?.statistics?.totalLabels ?? "-"}</dd>
+            <h2 className="font-mono text-2xl font-semibold tracking-[-0.04em]">Platform Quality Metrics</h2>
+            <dl className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4 text-sm">
+              <div className="rounded-2xl bg-black/[0.035] p-4">
+                <dt className="text-xs text-muted">Platform Tasks</dt>
+                <dd className="mt-1 text-xl font-semibold">{platformStats?.totalTasks ?? "—"}</dd>
               </div>
-              <div className="flex justify-between gap-3">
-                <dt className="text-muted">Approved</dt>
-                <dd>{performance?.statistics?.acceptedLabels ?? "-"}</dd>
+              <div className="rounded-2xl bg-black/[0.035] p-4">
+                <dt className="text-xs text-muted">Completed Tasks</dt>
+                <dd className="mt-1 text-xl font-semibold">{platformStats?.completedTasks ?? "—"}</dd>
               </div>
-              <div className="flex justify-between gap-3">
-                <dt className="text-muted">Overall accuracy</dt>
-                <dd>{performance?.statistics?.accuracyRate ? `${performance.statistics.accuracyRate}%` : "-"}</dd>
+              <div className="rounded-2xl bg-black/[0.035] p-4">
+                <dt className="text-xs text-muted">Total Accepted</dt>
+                <dd className="mt-1 text-xl font-semibold text-emerald-700">{platformStats?.totalAccepted ?? platformStats?.acceptedLabels ?? "—"}</dd>
+              </div>
+              <div className="rounded-2xl bg-black/[0.035] p-4">
+                <dt className="text-xs text-muted">Total Rejected</dt>
+                <dd className="mt-1 text-xl font-semibold text-red-700">{platformStats?.totalRejected ?? platformStats?.rejectedLabels ?? "—"}</dd>
               </div>
             </dl>
           </article>
@@ -665,7 +854,7 @@ export default function DashboardPage() {
 
       {/* Contributor Dashboard */}
       <ContributorOnly role={user?.role}>
-        <div className="flex flex-col gap-4">
+        <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-hidden">
           <div className="shrink-0 rounded-[2rem] bg-brand p-5 text-white shadow-[0_20px_44px_rgba(0,0,0,0.18)] md:px-7 md:py-6">
             <div className="flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
               <div>
@@ -680,10 +869,11 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          <div className="grid shrink-0 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          <div className="grid shrink-0 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
             <div className="rounded-3xl border border-black/8 bg-white/65 p-3"><ClipboardList className="size-4 text-muted" aria-hidden="true" /><p className="mt-3 text-xl font-semibold">{tasks.length}</p><p className="mt-1 text-xs text-muted">Open tasks</p></div>
-            <div className="rounded-3xl border border-black/8 bg-white/65 p-3"><CheckCircle2 className="size-4 text-muted" aria-hidden="true" /><p className="mt-3 text-xl font-semibold">{performance?.statistics?.acceptedLabels ?? "—"}</p><p className="mt-1 text-xs text-muted">Accepted labels</p></div>
-            <div className="rounded-3xl border border-black/8 bg-white/65 p-3"><BarChart3 className="size-4 text-muted" aria-hidden="true" /><p className="mt-3 text-xl font-semibold">{performance?.statistics?.accuracyRate ? `${performance.statistics.accuracyRate}%` : "—"}</p><p className="mt-1 text-xs text-muted">Accuracy rate</p></div>
+            <div className="rounded-3xl border border-black/8 bg-white/65 p-3"><CheckCircle2 className="size-4 text-muted" aria-hidden="true" /><p className="mt-3 text-xl font-semibold">{performance?.statistics?.acceptedLabels ?? 0}</p><p className="mt-1 text-xs text-muted">Accepted labels</p></div>
+            <div className="rounded-3xl border border-black/8 bg-white/65 p-3"><BarChart3 className="size-4 text-muted" aria-hidden="true" /><p className="mt-3 text-xl font-semibold">{performance?.statistics?.accuracyRate ? `${performance.statistics.accuracyRate}%` : "0%"}</p><p className="mt-1 text-xs text-muted">Accuracy rate</p></div>
+            <div className="rounded-3xl border border-black/8 bg-white/65 p-3"><Clock className="size-4 text-muted" aria-hidden="true" /><p className="mt-3 text-xl font-semibold">{performance?.statistics?.averageTimePerLabel ? `${performance.statistics.averageTimePerLabel}s` : "—"}</p><p className="mt-1 text-xs text-muted">Avg. labeling time</p></div>
             <div className="rounded-3xl border border-black/8 bg-white/65 p-3"><CircleDollarSign className="size-4 text-muted" aria-hidden="true" /><p className="mt-3 text-xl font-semibold">{pendingPayoutSummary?.totalPendingSOL ?? 0} SOL</p><p className="mt-1 text-xs text-muted">Ready for payout</p></div>
           </div>
 
@@ -695,19 +885,61 @@ export default function DashboardPage() {
 
           {feedback ? <div aria-live="polite" className="shrink-0 rounded-2xl border border-black/10 bg-white/70 px-4 py-3 text-sm">{feedback}</div> : null}
 
-          {/* Main content: tasks list + wallet side-by-side */}
-          <div className="grid gap-5 xl:grid-cols-[minmax(0,1.35fr)_minmax(22rem,0.55fr)]">
-            <article className="card flex flex-col rounded-[2rem] p-5 md:p-6">
-              <div className="sticky top-0 z-10 flex shrink-0 items-start justify-between gap-4 bg-white">
+          {/* Main content: tasks list + wallet side-by-side, capped in height so it doesn't overflow */}
+          <div className="grid min-h-0 flex-1 gap-5 overflow-hidden xl:grid-cols-[minmax(0,1.35fr)_minmax(22rem,0.55fr)]">
+            <article className="card flex min-h-0 flex-col overflow-hidden rounded-[2rem] p-5 md:p-6">
+              <div className="flex shrink-0 items-start justify-between gap-4">
                 <div>
                   <p className="eyebrow text-xs text-muted">Task queue</p>
                   <h2 className="mt-2 font-mono text-2xl font-semibold tracking-[-0.04em]">Available tasks</h2>
                 </div>
-                <span className="rounded-full border border-black/10 bg-white/70 px-3 py-1.5 text-xs font-semibold text-muted">{tasks.length} open</span>
+                <span className="rounded-full border border-black/10 bg-white/70 px-3 py-1.5 text-xs font-semibold text-muted">
+                  {filteredTasks.length} visible ({tasks.length} total)
+                </span>
               </div>
-              {/* Task list */}
-              <div className="mt-5 max-h-[calc(100vh-220px)] space-y-3 overflow-y-auto pr-2">
-                {tasks.map((task) => {
+
+              {/* Task search & filter controls */}
+              <div className="mt-4 flex shrink-0 flex-col gap-2.5 sm:flex-row sm:items-center">
+                <div className="relative flex-1">
+                  <Search className="absolute left-3 top-1/2 size-3.5 -translate-y-1/2 text-muted" />
+                  <input
+                    type="text"
+                    value={taskSearch}
+                    onChange={(e) => setTaskSearch(e.target.value)}
+                    placeholder="Search tasks by title, description..."
+                    className="field w-full pl-8 pr-7 py-1.5 text-xs"
+                  />
+                  {taskSearch && (
+                    <button
+                      type="button"
+                      onClick={() => setTaskSearch("")}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 text-muted hover:text-foreground"
+                    >
+                      <X className="size-3" />
+                    </button>
+                  )}
+                </div>
+                <div className="flex items-center gap-1">
+                  {["all", "pending", "in_progress"].map((status) => (
+                    <button
+                      key={status}
+                      type="button"
+                      onClick={() => setTaskStatusFilter(status)}
+                      className={`rounded-xl border px-2.5 py-1 text-xs font-semibold capitalize transition ${
+                        taskStatusFilter === status
+                          ? "border-black bg-black text-white"
+                          : "border-black/10 bg-white/60 text-muted hover:text-foreground"
+                      }`}
+                    >
+                      {status === "all" ? "All" : status.replace("_", " ")}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Scrollable task list — stays within the card, no page overflow */}
+              <div className="mt-4 min-h-0 flex-1 space-y-3 overflow-y-auto pr-1">
+                {filteredTasks.map((task) => {
                   const progress = task.requiredLabels ? Math.min((task.submittedLabels / task.requiredLabels) * 100, 100) : 0;
                   const statusDisplay = getTaskStatusDisplay(task.status);
                   // Allow opening both pending and in_progress tasks
@@ -750,22 +982,42 @@ export default function DashboardPage() {
                     </div>
                   );
                 })}
-                {!tasks.length ? (
+                {!filteredTasks.length ? (
                   <div className="rounded-3xl border border-dashed border-black/15 p-8 text-center text-sm text-muted">
-                    Your queue is clear. Refresh to look for newly published tasks.
+                    {tasks.length === 0
+                      ? "Your queue is clear. Refresh to look for newly published tasks."
+                      : "No tasks found matching your search or status filter."}
                   </div>
                 ) : null}
               </div>
             </article>
 
-            <div className="flex flex-col">
+            <div className="flex min-h-0 flex-col">
               <article className="rounded-[2rem] border border-black/10 bg-white p-5 md:p-6">
                 <div className="flex items-center gap-3">
                   <span className="rounded-2xl bg-black p-2.5 text-white"><Wallet className="size-5" aria-hidden="true" /></span>
                   <div><h3 className="font-semibold">Payout wallet</h3><p className="text-xs text-muted">Solana address for earnings</p></div>
                 </div>
                 <form className="mt-5 space-y-3" onSubmit={connectWallet}>
-                  <input className="field text-sm" onChange={(event) => setWalletAddress(event.target.value)} placeholder="Solana wallet address (base58)" value={walletAddress} />
+                  <div className="relative">
+                    <input
+                      className="field pr-10 text-sm font-mono"
+                      onChange={(event) => setWalletAddress(event.target.value)}
+                      placeholder="Solana wallet address (base58)"
+                      type={showWallet ? "text" : "password"}
+                      value={walletAddress}
+                    />
+                    {walletAddress ? (
+                      <button
+                        type="button"
+                        onClick={() => setShowWallet(!showWallet)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full p-1 text-muted transition hover:text-foreground"
+                        aria-label={showWallet ? "Hide wallet address" : "Show wallet address"}
+                      >
+                        {showWallet ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+                      </button>
+                    ) : null}
+                  </div>
                   <button className="btn-secondary w-full" disabled={!canCallApi || isBusy} type="submit">Save wallet address</button>
                 </form>
               </article>
