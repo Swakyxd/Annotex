@@ -227,19 +227,19 @@ export default function ReviewPage() {
         {/* Search bar */}
         <div className="mt-5 flex items-center gap-3">
           <div className="relative flex-1">
-            <Search className="absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-muted" />
+            <Search className="pointer-events-none absolute left-4 top-1/2 size-4 -translate-y-1/2 text-muted" />
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search by task title, label value, or contributor..."
-              className="field w-full pl-9 pr-8 text-sm"
+              className="field field-search w-full text-sm"
             />
             {searchQuery && (
               <button
                 type="button"
                 onClick={() => setSearchQuery("")}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 rounded-full p-0.5 text-muted hover:text-foreground"
+                className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full p-0.5 text-muted hover:text-foreground"
               >
                 <X className="size-3.5" />
               </button>

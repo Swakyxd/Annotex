@@ -4,6 +4,7 @@ import { getSession } from "next-auth/react";
 import { FormEvent, useMemo, useState } from "react";
 
 import { useAuth } from "@/components/providers/auth-provider";
+import { DatePicker } from "@/components/ui/date-picker";
 import { API_BASE_URL } from "@/lib/constants";
 
 type UploadResponse = {
@@ -31,6 +32,7 @@ export default function UploadDatasetPage() {
   const [totalRewardSOL, setTotalRewardSOL] = useState("50");
   const [maxLabelsPerRecord, setMaxLabelsPerRecord] = useState("3");
   const [consensusThreshold, setConsensusThreshold] = useState("0.67");
+  const [deadline, setDeadline] = useState("");
   const [autoPublish, setAutoPublish] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [feedback, setFeedback] = useState("");
@@ -81,6 +83,9 @@ export default function UploadDatasetPage() {
       formData.append("totalRewardSOL", totalRewardSOL);
       formData.append("maxLabelsPerRecord", maxLabelsPerRecord);
       formData.append("consensusThreshold", consensusThreshold);
+      if (deadline) {
+        formData.append("deadline", new Date(deadline).toISOString());
+      }
 
       const response = await fetch(`${API_BASE_URL}/datasets`, {
         method: "POST",
@@ -215,6 +220,23 @@ export default function UploadDatasetPage() {
                 type="number"
                 value={consensusThreshold}
               />
+            </div>
+
+            {/* Deadline */}
+            <div className="space-y-1">
+              <label className="text-sm font-medium text-foreground">
+                Labeling Deadline
+                <span className="ml-1.5 text-xs font-normal text-muted">(optional)</span>
+              </label>
+              <DatePicker
+                value={deadline}
+                onChange={setDeadline}
+                min={new Date().toISOString().split("T")[0]}
+                placeholder="Pick a deadline date…"
+              />
+              <p className="text-xs text-muted">
+                Tasks from this dataset will be removed after this date.
+              </p>
             </div>
 
             <input

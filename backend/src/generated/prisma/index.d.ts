@@ -3002,6 +3002,7 @@ export namespace Prisma {
     rewardPerRecord: number | null
     maxLabelsPerRecord: number | null
     consensusThreshold: number | null
+    deadline: Date | null
     isActive: boolean | null
     createdAt: Date | null
     updatedAt: Date | null
@@ -3021,6 +3022,7 @@ export namespace Prisma {
     rewardPerRecord: number | null
     maxLabelsPerRecord: number | null
     consensusThreshold: number | null
+    deadline: Date | null
     isActive: boolean | null
     createdAt: Date | null
     updatedAt: Date | null
@@ -3042,6 +3044,7 @@ export namespace Prisma {
     rewardPerRecord: number
     maxLabelsPerRecord: number
     consensusThreshold: number
+    deadline: number
     schema: number
     validationRules: number
     isActive: number
@@ -3083,6 +3086,7 @@ export namespace Prisma {
     rewardPerRecord?: true
     maxLabelsPerRecord?: true
     consensusThreshold?: true
+    deadline?: true
     isActive?: true
     createdAt?: true
     updatedAt?: true
@@ -3102,6 +3106,7 @@ export namespace Prisma {
     rewardPerRecord?: true
     maxLabelsPerRecord?: true
     consensusThreshold?: true
+    deadline?: true
     isActive?: true
     createdAt?: true
     updatedAt?: true
@@ -3123,6 +3128,7 @@ export namespace Prisma {
     rewardPerRecord?: true
     maxLabelsPerRecord?: true
     consensusThreshold?: true
+    deadline?: true
     schema?: true
     validationRules?: true
     isActive?: true
@@ -3233,6 +3239,7 @@ export namespace Prisma {
     rewardPerRecord: number
     maxLabelsPerRecord: number
     consensusThreshold: number
+    deadline: Date | null
     schema: JsonValue | null
     validationRules: JsonValue | null
     isActive: boolean
@@ -3275,6 +3282,7 @@ export namespace Prisma {
     rewardPerRecord?: boolean
     maxLabelsPerRecord?: boolean
     consensusThreshold?: boolean
+    deadline?: boolean
     schema?: boolean
     validationRules?: boolean
     isActive?: boolean
@@ -3303,6 +3311,7 @@ export namespace Prisma {
     rewardPerRecord?: boolean
     maxLabelsPerRecord?: boolean
     consensusThreshold?: boolean
+    deadline?: boolean
     schema?: boolean
     validationRules?: boolean
     isActive?: boolean
@@ -3327,6 +3336,7 @@ export namespace Prisma {
     rewardPerRecord?: boolean
     maxLabelsPerRecord?: boolean
     consensusThreshold?: boolean
+    deadline?: boolean
     schema?: boolean
     validationRules?: boolean
     isActive?: boolean
@@ -3351,6 +3361,7 @@ export namespace Prisma {
     rewardPerRecord?: boolean
     maxLabelsPerRecord?: boolean
     consensusThreshold?: boolean
+    deadline?: boolean
     schema?: boolean
     validationRules?: boolean
     isActive?: boolean
@@ -3359,7 +3370,7 @@ export namespace Prisma {
     createdById?: boolean
   }
 
-  export type DatasetOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "name" | "description" | "format" | "filePath" | "totalRecords" | "labeledRecords" | "labelType" | "labelOptions" | "labelSchema" | "totalRewardSOL" | "rewardPerRecord" | "maxLabelsPerRecord" | "consensusThreshold" | "schema" | "validationRules" | "isActive" | "createdAt" | "updatedAt" | "createdById", ExtArgs["result"]["dataset"]>
+  export type DatasetOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "name" | "description" | "format" | "filePath" | "totalRecords" | "labeledRecords" | "labelType" | "labelOptions" | "labelSchema" | "totalRewardSOL" | "rewardPerRecord" | "maxLabelsPerRecord" | "consensusThreshold" | "deadline" | "schema" | "validationRules" | "isActive" | "createdAt" | "updatedAt" | "createdById", ExtArgs["result"]["dataset"]>
   export type DatasetInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     createdBy?: boolean | UserDefaultArgs<ExtArgs>
     tasks?: boolean | Dataset$tasksArgs<ExtArgs>
@@ -3397,6 +3408,7 @@ export namespace Prisma {
       rewardPerRecord: number
       maxLabelsPerRecord: number
       consensusThreshold: number
+      deadline: Date | null
       schema: Prisma.JsonValue | null
       validationRules: Prisma.JsonValue | null
       isActive: boolean
@@ -3844,6 +3856,7 @@ export namespace Prisma {
     readonly rewardPerRecord: FieldRef<"Dataset", 'Float'>
     readonly maxLabelsPerRecord: FieldRef<"Dataset", 'Int'>
     readonly consensusThreshold: FieldRef<"Dataset", 'Float'>
+    readonly deadline: FieldRef<"Dataset", 'DateTime'>
     readonly schema: FieldRef<"Dataset", 'Json'>
     readonly validationRules: FieldRef<"Dataset", 'Json'>
     readonly isActive: FieldRef<"Dataset", 'Boolean'>
@@ -10512,6 +10525,7 @@ export namespace Prisma {
     rewardPerRecord: 'rewardPerRecord',
     maxLabelsPerRecord: 'maxLabelsPerRecord',
     consensusThreshold: 'consensusThreshold',
+    deadline: 'deadline',
     schema: 'schema',
     validationRules: 'validationRules',
     isActive: 'isActive',
@@ -10869,6 +10883,7 @@ export namespace Prisma {
     rewardPerRecord?: FloatFilter<"Dataset"> | number
     maxLabelsPerRecord?: IntFilter<"Dataset"> | number
     consensusThreshold?: FloatFilter<"Dataset"> | number
+    deadline?: DateTimeNullableFilter<"Dataset"> | Date | string | null
     schema?: JsonNullableFilter<"Dataset">
     validationRules?: JsonNullableFilter<"Dataset">
     isActive?: BoolFilter<"Dataset"> | boolean
@@ -10896,6 +10911,7 @@ export namespace Prisma {
     rewardPerRecord?: SortOrder
     maxLabelsPerRecord?: SortOrder
     consensusThreshold?: SortOrder
+    deadline?: SortOrderInput | SortOrder
     schema?: SortOrderInput | SortOrder
     validationRules?: SortOrderInput | SortOrder
     isActive?: SortOrder
@@ -10926,6 +10942,7 @@ export namespace Prisma {
     rewardPerRecord?: FloatFilter<"Dataset"> | number
     maxLabelsPerRecord?: IntFilter<"Dataset"> | number
     consensusThreshold?: FloatFilter<"Dataset"> | number
+    deadline?: DateTimeNullableFilter<"Dataset"> | Date | string | null
     schema?: JsonNullableFilter<"Dataset">
     validationRules?: JsonNullableFilter<"Dataset">
     isActive?: BoolFilter<"Dataset"> | boolean
@@ -10953,6 +10970,7 @@ export namespace Prisma {
     rewardPerRecord?: SortOrder
     maxLabelsPerRecord?: SortOrder
     consensusThreshold?: SortOrder
+    deadline?: SortOrderInput | SortOrder
     schema?: SortOrderInput | SortOrder
     validationRules?: SortOrderInput | SortOrder
     isActive?: SortOrder
@@ -10984,6 +11002,7 @@ export namespace Prisma {
     rewardPerRecord?: FloatWithAggregatesFilter<"Dataset"> | number
     maxLabelsPerRecord?: IntWithAggregatesFilter<"Dataset"> | number
     consensusThreshold?: FloatWithAggregatesFilter<"Dataset"> | number
+    deadline?: DateTimeNullableWithAggregatesFilter<"Dataset"> | Date | string | null
     schema?: JsonNullableWithAggregatesFilter<"Dataset">
     validationRules?: JsonNullableWithAggregatesFilter<"Dataset">
     isActive?: BoolWithAggregatesFilter<"Dataset"> | boolean
@@ -11610,6 +11629,7 @@ export namespace Prisma {
     rewardPerRecord?: number
     maxLabelsPerRecord?: number
     consensusThreshold?: number
+    deadline?: Date | string | null
     schema?: NullableJsonNullValueInput | InputJsonValue
     validationRules?: NullableJsonNullValueInput | InputJsonValue
     isActive?: boolean
@@ -11636,6 +11656,7 @@ export namespace Prisma {
     rewardPerRecord?: number
     maxLabelsPerRecord?: number
     consensusThreshold?: number
+    deadline?: Date | string | null
     schema?: NullableJsonNullValueInput | InputJsonValue
     validationRules?: NullableJsonNullValueInput | InputJsonValue
     isActive?: boolean
@@ -11662,6 +11683,7 @@ export namespace Prisma {
     rewardPerRecord?: FloatFieldUpdateOperationsInput | number
     maxLabelsPerRecord?: IntFieldUpdateOperationsInput | number
     consensusThreshold?: FloatFieldUpdateOperationsInput | number
+    deadline?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     schema?: NullableJsonNullValueInput | InputJsonValue
     validationRules?: NullableJsonNullValueInput | InputJsonValue
     isActive?: BoolFieldUpdateOperationsInput | boolean
@@ -11688,6 +11710,7 @@ export namespace Prisma {
     rewardPerRecord?: FloatFieldUpdateOperationsInput | number
     maxLabelsPerRecord?: IntFieldUpdateOperationsInput | number
     consensusThreshold?: FloatFieldUpdateOperationsInput | number
+    deadline?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     schema?: NullableJsonNullValueInput | InputJsonValue
     validationRules?: NullableJsonNullValueInput | InputJsonValue
     isActive?: BoolFieldUpdateOperationsInput | boolean
@@ -11714,6 +11737,7 @@ export namespace Prisma {
     rewardPerRecord?: number
     maxLabelsPerRecord?: number
     consensusThreshold?: number
+    deadline?: Date | string | null
     schema?: NullableJsonNullValueInput | InputJsonValue
     validationRules?: NullableJsonNullValueInput | InputJsonValue
     isActive?: boolean
@@ -11737,6 +11761,7 @@ export namespace Prisma {
     rewardPerRecord?: FloatFieldUpdateOperationsInput | number
     maxLabelsPerRecord?: IntFieldUpdateOperationsInput | number
     consensusThreshold?: FloatFieldUpdateOperationsInput | number
+    deadline?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     schema?: NullableJsonNullValueInput | InputJsonValue
     validationRules?: NullableJsonNullValueInput | InputJsonValue
     isActive?: BoolFieldUpdateOperationsInput | boolean
@@ -11759,6 +11784,7 @@ export namespace Prisma {
     rewardPerRecord?: FloatFieldUpdateOperationsInput | number
     maxLabelsPerRecord?: IntFieldUpdateOperationsInput | number
     consensusThreshold?: FloatFieldUpdateOperationsInput | number
+    deadline?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     schema?: NullableJsonNullValueInput | InputJsonValue
     validationRules?: NullableJsonNullValueInput | InputJsonValue
     isActive?: BoolFieldUpdateOperationsInput | boolean
@@ -12592,6 +12618,17 @@ export namespace Prisma {
     not?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | JsonNullValueFilter
   }
 
+  export type DateTimeNullableFilter<$PrismaModel = never> = {
+    equals?: Date | string | DateTimeFieldRefInput<$PrismaModel> | null
+    in?: Date[] | string[] | ListDateTimeFieldRefInput<$PrismaModel> | null
+    notIn?: Date[] | string[] | ListDateTimeFieldRefInput<$PrismaModel> | null
+    lt?: Date | string | DateTimeFieldRefInput<$PrismaModel>
+    lte?: Date | string | DateTimeFieldRefInput<$PrismaModel>
+    gt?: Date | string | DateTimeFieldRefInput<$PrismaModel>
+    gte?: Date | string | DateTimeFieldRefInput<$PrismaModel>
+    not?: NestedDateTimeNullableFilter<$PrismaModel> | Date | string | null
+  }
+
   export type UserScalarRelationFilter = {
     is?: UserWhereInput
     isNot?: UserWhereInput
@@ -12622,6 +12659,7 @@ export namespace Prisma {
     rewardPerRecord?: SortOrder
     maxLabelsPerRecord?: SortOrder
     consensusThreshold?: SortOrder
+    deadline?: SortOrder
     schema?: SortOrder
     validationRules?: SortOrder
     isActive?: SortOrder
@@ -12652,6 +12690,7 @@ export namespace Prisma {
     rewardPerRecord?: SortOrder
     maxLabelsPerRecord?: SortOrder
     consensusThreshold?: SortOrder
+    deadline?: SortOrder
     isActive?: SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
@@ -12671,6 +12710,7 @@ export namespace Prisma {
     rewardPerRecord?: SortOrder
     maxLabelsPerRecord?: SortOrder
     consensusThreshold?: SortOrder
+    deadline?: SortOrder
     isActive?: SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
@@ -12710,6 +12750,20 @@ export namespace Prisma {
     _count?: NestedIntNullableFilter<$PrismaModel>
     _min?: NestedJsonNullableFilter<$PrismaModel>
     _max?: NestedJsonNullableFilter<$PrismaModel>
+  }
+
+  export type DateTimeNullableWithAggregatesFilter<$PrismaModel = never> = {
+    equals?: Date | string | DateTimeFieldRefInput<$PrismaModel> | null
+    in?: Date[] | string[] | ListDateTimeFieldRefInput<$PrismaModel> | null
+    notIn?: Date[] | string[] | ListDateTimeFieldRefInput<$PrismaModel> | null
+    lt?: Date | string | DateTimeFieldRefInput<$PrismaModel>
+    lte?: Date | string | DateTimeFieldRefInput<$PrismaModel>
+    gt?: Date | string | DateTimeFieldRefInput<$PrismaModel>
+    gte?: Date | string | DateTimeFieldRefInput<$PrismaModel>
+    not?: NestedDateTimeNullableWithAggregatesFilter<$PrismaModel> | Date | string | null
+    _count?: NestedIntNullableFilter<$PrismaModel>
+    _min?: NestedDateTimeNullableFilter<$PrismaModel>
+    _max?: NestedDateTimeNullableFilter<$PrismaModel>
   }
   export type JsonFilter<$PrismaModel = never> =
     | PatchUndefined<
@@ -12807,17 +12861,6 @@ export namespace Prisma {
     _max?: NestedJsonFilter<$PrismaModel>
   }
 
-  export type DateTimeNullableFilter<$PrismaModel = never> = {
-    equals?: Date | string | DateTimeFieldRefInput<$PrismaModel> | null
-    in?: Date[] | string[] | ListDateTimeFieldRefInput<$PrismaModel> | null
-    notIn?: Date[] | string[] | ListDateTimeFieldRefInput<$PrismaModel> | null
-    lt?: Date | string | DateTimeFieldRefInput<$PrismaModel>
-    lte?: Date | string | DateTimeFieldRefInput<$PrismaModel>
-    gt?: Date | string | DateTimeFieldRefInput<$PrismaModel>
-    gte?: Date | string | DateTimeFieldRefInput<$PrismaModel>
-    not?: NestedDateTimeNullableFilter<$PrismaModel> | Date | string | null
-  }
-
   export type UuidNullableFilter<$PrismaModel = never> = {
     equals?: string | StringFieldRefInput<$PrismaModel> | null
     in?: string[] | ListStringFieldRefInput<$PrismaModel> | null
@@ -12904,20 +12947,6 @@ export namespace Prisma {
     requiredLabels?: SortOrder
     submittedLabels?: SortOrder
     consensusThreshold?: SortOrder
-  }
-
-  export type DateTimeNullableWithAggregatesFilter<$PrismaModel = never> = {
-    equals?: Date | string | DateTimeFieldRefInput<$PrismaModel> | null
-    in?: Date[] | string[] | ListDateTimeFieldRefInput<$PrismaModel> | null
-    notIn?: Date[] | string[] | ListDateTimeFieldRefInput<$PrismaModel> | null
-    lt?: Date | string | DateTimeFieldRefInput<$PrismaModel>
-    lte?: Date | string | DateTimeFieldRefInput<$PrismaModel>
-    gt?: Date | string | DateTimeFieldRefInput<$PrismaModel>
-    gte?: Date | string | DateTimeFieldRefInput<$PrismaModel>
-    not?: NestedDateTimeNullableWithAggregatesFilter<$PrismaModel> | Date | string | null
-    _count?: NestedIntNullableFilter<$PrismaModel>
-    _min?: NestedDateTimeNullableFilter<$PrismaModel>
-    _max?: NestedDateTimeNullableFilter<$PrismaModel>
   }
 
   export type UuidNullableWithAggregatesFilter<$PrismaModel = never> = {
@@ -13391,6 +13420,10 @@ export namespace Prisma {
     connect?: PayoutWhereUniqueInput | PayoutWhereUniqueInput[]
   }
 
+  export type NullableDateTimeFieldUpdateOperationsInput = {
+    set?: Date | string | null
+  }
+
   export type UserUpdateOneRequiredWithoutDatasetsNestedInput = {
     create?: XOR<UserCreateWithoutDatasetsInput, UserUncheckedCreateWithoutDatasetsInput>
     connectOrCreate?: UserCreateOrConnectWithoutDatasetsInput
@@ -13611,10 +13644,6 @@ export namespace Prisma {
     connectOrCreate?: LabelCreateOrConnectWithoutTaskInput | LabelCreateOrConnectWithoutTaskInput[]
     createMany?: LabelCreateManyTaskInputEnvelope
     connect?: LabelWhereUniqueInput | LabelWhereUniqueInput[]
-  }
-
-  export type NullableDateTimeFieldUpdateOperationsInput = {
-    set?: Date | string | null
   }
 
   export type DatasetUpdateOneRequiredWithoutTasksNestedInput = {
@@ -13996,6 +14025,17 @@ export namespace Prisma {
     _min?: NestedDateTimeFilter<$PrismaModel>
     _max?: NestedDateTimeFilter<$PrismaModel>
   }
+
+  export type NestedDateTimeNullableFilter<$PrismaModel = never> = {
+    equals?: Date | string | DateTimeFieldRefInput<$PrismaModel> | null
+    in?: Date[] | string[] | ListDateTimeFieldRefInput<$PrismaModel> | null
+    notIn?: Date[] | string[] | ListDateTimeFieldRefInput<$PrismaModel> | null
+    lt?: Date | string | DateTimeFieldRefInput<$PrismaModel>
+    lte?: Date | string | DateTimeFieldRefInput<$PrismaModel>
+    gt?: Date | string | DateTimeFieldRefInput<$PrismaModel>
+    gte?: Date | string | DateTimeFieldRefInput<$PrismaModel>
+    not?: NestedDateTimeNullableFilter<$PrismaModel> | Date | string | null
+  }
   export type NestedJsonNullableFilter<$PrismaModel = never> =
     | PatchUndefined<
         Either<Required<NestedJsonNullableFilterBase<$PrismaModel>>, Exclude<keyof Required<NestedJsonNullableFilterBase<$PrismaModel>>, 'path'>>,
@@ -14018,6 +14058,20 @@ export namespace Prisma {
     gt?: InputJsonValue | JsonFieldRefInput<$PrismaModel>
     gte?: InputJsonValue | JsonFieldRefInput<$PrismaModel>
     not?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | JsonNullValueFilter
+  }
+
+  export type NestedDateTimeNullableWithAggregatesFilter<$PrismaModel = never> = {
+    equals?: Date | string | DateTimeFieldRefInput<$PrismaModel> | null
+    in?: Date[] | string[] | ListDateTimeFieldRefInput<$PrismaModel> | null
+    notIn?: Date[] | string[] | ListDateTimeFieldRefInput<$PrismaModel> | null
+    lt?: Date | string | DateTimeFieldRefInput<$PrismaModel>
+    lte?: Date | string | DateTimeFieldRefInput<$PrismaModel>
+    gt?: Date | string | DateTimeFieldRefInput<$PrismaModel>
+    gte?: Date | string | DateTimeFieldRefInput<$PrismaModel>
+    not?: NestedDateTimeNullableWithAggregatesFilter<$PrismaModel> | Date | string | null
+    _count?: NestedIntNullableFilter<$PrismaModel>
+    _min?: NestedDateTimeNullableFilter<$PrismaModel>
+    _max?: NestedDateTimeNullableFilter<$PrismaModel>
   }
   export type NestedJsonFilter<$PrismaModel = never> =
     | PatchUndefined<
@@ -14043,17 +14097,6 @@ export namespace Prisma {
     not?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | JsonNullValueFilter
   }
 
-  export type NestedDateTimeNullableFilter<$PrismaModel = never> = {
-    equals?: Date | string | DateTimeFieldRefInput<$PrismaModel> | null
-    in?: Date[] | string[] | ListDateTimeFieldRefInput<$PrismaModel> | null
-    notIn?: Date[] | string[] | ListDateTimeFieldRefInput<$PrismaModel> | null
-    lt?: Date | string | DateTimeFieldRefInput<$PrismaModel>
-    lte?: Date | string | DateTimeFieldRefInput<$PrismaModel>
-    gt?: Date | string | DateTimeFieldRefInput<$PrismaModel>
-    gte?: Date | string | DateTimeFieldRefInput<$PrismaModel>
-    not?: NestedDateTimeNullableFilter<$PrismaModel> | Date | string | null
-  }
-
   export type NestedUuidNullableFilter<$PrismaModel = never> = {
     equals?: string | StringFieldRefInput<$PrismaModel> | null
     in?: string[] | ListStringFieldRefInput<$PrismaModel> | null
@@ -14063,20 +14106,6 @@ export namespace Prisma {
     gt?: string | StringFieldRefInput<$PrismaModel>
     gte?: string | StringFieldRefInput<$PrismaModel>
     not?: NestedUuidNullableFilter<$PrismaModel> | string | null
-  }
-
-  export type NestedDateTimeNullableWithAggregatesFilter<$PrismaModel = never> = {
-    equals?: Date | string | DateTimeFieldRefInput<$PrismaModel> | null
-    in?: Date[] | string[] | ListDateTimeFieldRefInput<$PrismaModel> | null
-    notIn?: Date[] | string[] | ListDateTimeFieldRefInput<$PrismaModel> | null
-    lt?: Date | string | DateTimeFieldRefInput<$PrismaModel>
-    lte?: Date | string | DateTimeFieldRefInput<$PrismaModel>
-    gt?: Date | string | DateTimeFieldRefInput<$PrismaModel>
-    gte?: Date | string | DateTimeFieldRefInput<$PrismaModel>
-    not?: NestedDateTimeNullableWithAggregatesFilter<$PrismaModel> | Date | string | null
-    _count?: NestedIntNullableFilter<$PrismaModel>
-    _min?: NestedDateTimeNullableFilter<$PrismaModel>
-    _max?: NestedDateTimeNullableFilter<$PrismaModel>
   }
 
   export type NestedUuidNullableWithAggregatesFilter<$PrismaModel = never> = {
@@ -14154,6 +14183,7 @@ export namespace Prisma {
     rewardPerRecord?: number
     maxLabelsPerRecord?: number
     consensusThreshold?: number
+    deadline?: Date | string | null
     schema?: NullableJsonNullValueInput | InputJsonValue
     validationRules?: NullableJsonNullValueInput | InputJsonValue
     isActive?: boolean
@@ -14179,6 +14209,7 @@ export namespace Prisma {
     rewardPerRecord?: number
     maxLabelsPerRecord?: number
     consensusThreshold?: number
+    deadline?: Date | string | null
     schema?: NullableJsonNullValueInput | InputJsonValue
     validationRules?: NullableJsonNullValueInput | InputJsonValue
     isActive?: boolean
@@ -14382,6 +14413,7 @@ export namespace Prisma {
     rewardPerRecord?: FloatFilter<"Dataset"> | number
     maxLabelsPerRecord?: IntFilter<"Dataset"> | number
     consensusThreshold?: FloatFilter<"Dataset"> | number
+    deadline?: DateTimeNullableFilter<"Dataset"> | Date | string | null
     schema?: JsonNullableFilter<"Dataset">
     validationRules?: JsonNullableFilter<"Dataset">
     isActive?: BoolFilter<"Dataset"> | boolean
@@ -14774,6 +14806,7 @@ export namespace Prisma {
     rewardPerRecord?: number
     maxLabelsPerRecord?: number
     consensusThreshold?: number
+    deadline?: Date | string | null
     schema?: NullableJsonNullValueInput | InputJsonValue
     validationRules?: NullableJsonNullValueInput | InputJsonValue
     isActive?: boolean
@@ -14799,6 +14832,7 @@ export namespace Prisma {
     rewardPerRecord?: number
     maxLabelsPerRecord?: number
     consensusThreshold?: number
+    deadline?: Date | string | null
     schema?: NullableJsonNullValueInput | InputJsonValue
     validationRules?: NullableJsonNullValueInput | InputJsonValue
     isActive?: boolean
@@ -14926,6 +14960,7 @@ export namespace Prisma {
     rewardPerRecord?: FloatFieldUpdateOperationsInput | number
     maxLabelsPerRecord?: IntFieldUpdateOperationsInput | number
     consensusThreshold?: FloatFieldUpdateOperationsInput | number
+    deadline?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     schema?: NullableJsonNullValueInput | InputJsonValue
     validationRules?: NullableJsonNullValueInput | InputJsonValue
     isActive?: BoolFieldUpdateOperationsInput | boolean
@@ -14951,6 +14986,7 @@ export namespace Prisma {
     rewardPerRecord?: FloatFieldUpdateOperationsInput | number
     maxLabelsPerRecord?: IntFieldUpdateOperationsInput | number
     consensusThreshold?: FloatFieldUpdateOperationsInput | number
+    deadline?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     schema?: NullableJsonNullValueInput | InputJsonValue
     validationRules?: NullableJsonNullValueInput | InputJsonValue
     isActive?: BoolFieldUpdateOperationsInput | boolean
@@ -15008,6 +15044,7 @@ export namespace Prisma {
     rewardPerRecord?: number
     maxLabelsPerRecord?: number
     consensusThreshold?: number
+    deadline?: Date | string | null
     schema?: NullableJsonNullValueInput | InputJsonValue
     validationRules?: NullableJsonNullValueInput | InputJsonValue
     isActive?: boolean
@@ -15033,6 +15070,7 @@ export namespace Prisma {
     rewardPerRecord?: number
     maxLabelsPerRecord?: number
     consensusThreshold?: number
+    deadline?: Date | string | null
     schema?: NullableJsonNullValueInput | InputJsonValue
     validationRules?: NullableJsonNullValueInput | InputJsonValue
     isActive?: boolean
@@ -15186,6 +15224,7 @@ export namespace Prisma {
     rewardPerRecord?: FloatFieldUpdateOperationsInput | number
     maxLabelsPerRecord?: IntFieldUpdateOperationsInput | number
     consensusThreshold?: FloatFieldUpdateOperationsInput | number
+    deadline?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     schema?: NullableJsonNullValueInput | InputJsonValue
     validationRules?: NullableJsonNullValueInput | InputJsonValue
     isActive?: BoolFieldUpdateOperationsInput | boolean
@@ -15211,6 +15250,7 @@ export namespace Prisma {
     rewardPerRecord?: FloatFieldUpdateOperationsInput | number
     maxLabelsPerRecord?: IntFieldUpdateOperationsInput | number
     consensusThreshold?: FloatFieldUpdateOperationsInput | number
+    deadline?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     schema?: NullableJsonNullValueInput | InputJsonValue
     validationRules?: NullableJsonNullValueInput | InputJsonValue
     isActive?: BoolFieldUpdateOperationsInput | boolean
@@ -15689,6 +15729,7 @@ export namespace Prisma {
     rewardPerRecord?: number
     maxLabelsPerRecord?: number
     consensusThreshold?: number
+    deadline?: Date | string | null
     schema?: NullableJsonNullValueInput | InputJsonValue
     validationRules?: NullableJsonNullValueInput | InputJsonValue
     isActive?: boolean
@@ -15714,6 +15755,7 @@ export namespace Prisma {
     rewardPerRecord?: number
     maxLabelsPerRecord?: number
     consensusThreshold?: number
+    deadline?: Date | string | null
     schema?: NullableJsonNullValueInput | InputJsonValue
     validationRules?: NullableJsonNullValueInput | InputJsonValue
     isActive?: boolean
@@ -15841,6 +15883,7 @@ export namespace Prisma {
     rewardPerRecord?: FloatFieldUpdateOperationsInput | number
     maxLabelsPerRecord?: IntFieldUpdateOperationsInput | number
     consensusThreshold?: FloatFieldUpdateOperationsInput | number
+    deadline?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     schema?: NullableJsonNullValueInput | InputJsonValue
     validationRules?: NullableJsonNullValueInput | InputJsonValue
     isActive?: BoolFieldUpdateOperationsInput | boolean
@@ -15866,6 +15909,7 @@ export namespace Prisma {
     rewardPerRecord?: FloatFieldUpdateOperationsInput | number
     maxLabelsPerRecord?: IntFieldUpdateOperationsInput | number
     consensusThreshold?: FloatFieldUpdateOperationsInput | number
+    deadline?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     schema?: NullableJsonNullValueInput | InputJsonValue
     validationRules?: NullableJsonNullValueInput | InputJsonValue
     isActive?: BoolFieldUpdateOperationsInput | boolean
@@ -16045,6 +16089,7 @@ export namespace Prisma {
     rewardPerRecord?: number
     maxLabelsPerRecord?: number
     consensusThreshold?: number
+    deadline?: Date | string | null
     schema?: NullableJsonNullValueInput | InputJsonValue
     validationRules?: NullableJsonNullValueInput | InputJsonValue
     isActive?: boolean
@@ -16160,6 +16205,7 @@ export namespace Prisma {
     rewardPerRecord?: FloatFieldUpdateOperationsInput | number
     maxLabelsPerRecord?: IntFieldUpdateOperationsInput | number
     consensusThreshold?: FloatFieldUpdateOperationsInput | number
+    deadline?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     schema?: NullableJsonNullValueInput | InputJsonValue
     validationRules?: NullableJsonNullValueInput | InputJsonValue
     isActive?: BoolFieldUpdateOperationsInput | boolean
@@ -16185,6 +16231,7 @@ export namespace Prisma {
     rewardPerRecord?: FloatFieldUpdateOperationsInput | number
     maxLabelsPerRecord?: IntFieldUpdateOperationsInput | number
     consensusThreshold?: FloatFieldUpdateOperationsInput | number
+    deadline?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     schema?: NullableJsonNullValueInput | InputJsonValue
     validationRules?: NullableJsonNullValueInput | InputJsonValue
     isActive?: BoolFieldUpdateOperationsInput | boolean
@@ -16210,6 +16257,7 @@ export namespace Prisma {
     rewardPerRecord?: FloatFieldUpdateOperationsInput | number
     maxLabelsPerRecord?: IntFieldUpdateOperationsInput | number
     consensusThreshold?: FloatFieldUpdateOperationsInput | number
+    deadline?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     schema?: NullableJsonNullValueInput | InputJsonValue
     validationRules?: NullableJsonNullValueInput | InputJsonValue
     isActive?: BoolFieldUpdateOperationsInput | boolean

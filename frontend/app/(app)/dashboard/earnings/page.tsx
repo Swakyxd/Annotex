@@ -243,13 +243,14 @@ export default function EarningsPage() {
         {/* Filter Bar: Search & Status Filter */}
         <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="relative flex-1">
-            <Search className="absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-muted" />
+            <Search className="pointer-events-none absolute left-4 top-1/2 size-4 -translate-y-1/2 text-muted" />
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search by status, amount, or transaction hash..."
-              className="field w-full pl-9 pr-8 text-sm"
+              className="field w-full text-sm"
+              style={{ paddingLeft: "2.5rem", paddingRight: "2.25rem" }}
             />
             {searchQuery && (
               <button

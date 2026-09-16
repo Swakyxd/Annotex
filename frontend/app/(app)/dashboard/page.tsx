@@ -4,10 +4,12 @@ import { FormEvent, useEffect, useMemo, useState } from "react";
 import {
   Award,
   BarChart3,
+  Check,
   CheckCircle2,
   CircleDollarSign,
   ClipboardList,
   Clock,
+  Copy,
   Eye,
   EyeOff,
   RefreshCw,
@@ -126,8 +128,16 @@ export default function DashboardPage() {
   const [taskSearch, setTaskSearch] = useState<string>("");
   const [taskStatusFilter, setTaskStatusFilter] = useState<string>("all");
   const [validatorSearch, setValidatorSearch] = useState<string>("");
+  const [copiedDatasetId, setCopiedDatasetId] = useState<string | null>(null);
 
+  const copyDatasetId = (id: string) => {
+    void navigator.clipboard.writeText(id).then(() => {
+      setCopiedDatasetId(id);
+      setTimeout(() => setCopiedDatasetId(null), 1500);
+    });
+  };
   const canCallApi = Boolean(accessToken);
+
 
   const request = async <T,>(path: string, init?: RequestInit): Promise<T> => {
     if (!accessToken) {
@@ -470,27 +480,25 @@ export default function DashboardPage() {
   };
 
   return (
-    <section className={permissions.isContributor() ? "flex h-[calc(100vh-10rem)] min-h-0 flex-col gap-5 overflow-hidden" : "space-y-8"}>
+    <section className={permissions.isContributor() ? "space-y-5" : "space-y-8"}>
       {/* Welcome Section */}
-      {!permissions.isContributor() && <div className="card rounded-4xl p-6 md:p-8">
+      {!permissions.isContributor() && <div className="rounded-[2rem] bg-black p-6 text-white shadow-[0_16px_40px_rgba(0,0,0,0.18)] md:px-8 md:py-7">
         <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
           <div className="space-y-3">
-            <p className="eyebrow text-sm text-muted">
-              {permissions.isAdmin() ? "Admin Dashboard" : permissions.isValidator() ? "Validator Hub" : "Contributor Workspace"}
+            <p className="eyebrow text-sm text-white/50">
+              {permissions.isAdmin() ? "Admin Dashboard" : "Validator Hub"}
             </p>
             <h1 className="font-mono text-3xl font-semibold tracking-[-0.05em] md:text-5xl">
-              {isLoading ? "Loading workspace..." : `Welcome, ${user?.firstName ?? "User"}`}
+              {isLoading ? "Loading..." : `Welcome, ${user?.firstName ?? "User"}`}
             </h1>
-            <p className="max-w-3xl text-sm leading-7 text-muted md:text-base">
+            <p className="max-w-3xl text-sm leading-7 text-white/60 md:text-base">
               {permissions.isAdmin() && "Manage tasks, review labels, approve quality work, and process contributor payouts."}
               {permissions.isValidator() && "Review submitted labels, approve quality work, and monitor platform metrics."}
-              {permissions.isContributor() &&
-                "Browse available labeling tasks, submit your annotations, track your accuracy, and manage wallet for payouts."}
             </p>
           </div>
-          <div className="rounded-3xl border border-black/8 bg-white/60 px-4 py-3 text-sm text-muted">
-            <div>Role</div>
-            <div className="mt-1 font-mono text-lg font-semibold text-foreground">{user?.role ?? "unknown"}</div>
+          <div className="rounded-2xl border border-white/15 bg-white/10 px-4 py-3 text-sm">
+            <div className="text-white/50">Role</div>
+            <div className="mt-1 font-mono text-lg font-semibold text-white">{user?.role ?? "unknown"}</div>
           </div>
         </div>
       </div>}
@@ -499,12 +507,9 @@ export default function DashboardPage() {
       <AdminOnly role={user?.role}>
         <div className="space-y-5">
           {/* Admin Action Buttons */}
-          <div className="grid gap-4 md:grid-cols-4">
+          <div className="grid gap-4 md:grid-cols-3">
             <button className="btn-secondary" disabled={!canCallApi || isBusy} onClick={fetchTasks} type="button">
               Fetch all tasks
-            </button>
-            <button className="btn-secondary" disabled={!canCallApi || isBusy} onClick={fetchUserPerformance} type="button">
-              View statistics
             </button>
             <button className="btn-secondary" disabled={!canCallApi || isBusy} onClick={fetchTransactions} type="button">
               View transactions
@@ -516,68 +521,22 @@ export default function DashboardPage() {
 
           {feedback ? <div className="rounded-2xl border border-black/10 bg-white/70 px-4 py-3 text-sm">{feedback}</div> : null}
 
-          {/* Task Management Section */}
-          <div className="grid gap-5 lg:grid-cols-[1.5fr_0.85fr]">
-            {/* Create New Task */}
-            <article className="card rounded-[1.75rem] p-6">
-              <h2 className="font-mono text-2xl font-semibold tracking-[-0.04em]">Create new task</h2>
-              <p className="mt-2 text-sm text-muted">Set up a new data labeling task for contributors.</p>
-
-              <form className="mt-4 space-y-3" onSubmit={createTask}>
-                <input
-                  className="field"
-                  onChange={(event) => setNewTaskTitle(event.target.value)}
-                  placeholder="Task title (e.g., 'Classify sentiment in tweets')"
-                  value={newTaskTitle}
-                />
-                <textarea
-                  className="field min-h-20"
-                  onChange={(event) => setNewTaskDescription(event.target.value)}
-                  placeholder="Task description and instructions"
-                  value={newTaskDescription}
-                />
-                <input
-                  className="field"
-                  onChange={(event) => setNewTaskReward(event.target.value)}
-                  placeholder="Reward amount (e.g., 0.5)"
-                  type="number"
-                  step="0.01"
-                  value={newTaskReward}
-                />
-                <button className="btn-primary w-full" disabled={!canCallApi || isBusy} type="submit">
-                  Create Task
-                </button>
-              </form>
-            </article>
-
-            {/* Task List Overview */}
-            <article className="card rounded-[1.75rem] p-6">
-              <div className="mb-4 flex items-center justify-between">
-                <h2 className="font-mono text-2xl font-semibold tracking-[-0.04em]">Tasks</h2>
-                <span className="text-sm text-muted">{tasks.length}</span>
-              </div>
-
-              <div className="space-y-2 max-h-96 overflow-y-auto">
-                {tasks.slice(0, 10).map((task) => (
-                  <div key={task.id} className="rounded-lg border border-black/10 bg-white/50 p-3 text-sm">
-                    <p className="font-semibold truncate">{task.title}</p>
-                    <p className="text-xs text-muted">
-                      Status: {task.status} | Reward: {task.reward} | {task.submittedLabels}/{task.requiredLabels} labels
-                    </p>
-                  </div>
-                ))}
-                {!tasks.length ? <p className="text-sm text-muted">No tasks yet.</p> : null}
-              </div>
-            </article>
-          </div>
-
-          {/* Label Review Section */}
+          {/* Task List — full width overview */}
           <article className="card rounded-[1.75rem] p-6">
-            <h2 className="font-mono text-2xl font-semibold tracking-[-0.04em]">Label review queue</h2>
-            <p className="mt-2 text-sm text-muted">Approve or reject submitted labels from contributors.</p>
-            <div className="mt-4 rounded-lg border border-black/10 bg-white/50 p-4 text-sm text-muted">
-              <p>Label review functionality: API integration pending</p>
-              <p className="mt-2">Buttons for approve/reject will appear once backend endpoints are ready.</p>
+            <div className="mb-4 flex items-center justify-between">
+              <h2 className="font-mono text-2xl font-semibold tracking-[-0.04em]">Tasks</h2>
+              <span className="text-sm text-muted">{tasks.length}</span>
+            </div>
+            <div className="space-y-2 max-h-80 overflow-y-auto">
+              {tasks.slice(0, 10).map((task) => (
+                <div key={task.id} className="rounded-lg border border-black/10 bg-white/50 p-3 text-sm">
+                  <p className="font-semibold truncate">{task.title}</p>
+                  <p className="text-xs text-muted">
+                    Status: {task.status} | Reward: {task.reward} | {task.submittedLabels}/{task.requiredLabels} labels
+                  </p>
+                </div>
+              ))}
+              {!tasks.length ? <p className="text-sm text-muted">No tasks yet. Click "Fetch all tasks" above.</p> : null}
             </div>
           </article>
 
@@ -598,8 +557,19 @@ export default function DashboardPage() {
                 <div key={dataset.id} className="rounded-lg border border-black/10 bg-white/60 p-4">
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
-                      <p className="truncate font-semibold">{dataset.name}</p>
-                      <p className="mt-1 break-all text-xs text-muted">ID: {dataset.id}</p>
+                      <div className="flex items-center gap-1.5">
+                        <p className="truncate font-semibold">{dataset.name}</p>
+                        <button
+                          type="button"
+                          title="Copy Dataset ID"
+                          onClick={() => copyDatasetId(dataset.id)}
+                          className="shrink-0 rounded-md p-0.5 text-muted transition hover:text-foreground"
+                        >
+                          {copiedDatasetId === dataset.id
+                            ? <Check className="size-3.5 text-emerald-600" />
+                            : <Copy className="size-3.5" />}
+                        </button>
+                      </div>
                       <p className="mt-1 text-xs text-muted">
                         {dataset.totalRecords} records | format: {dataset.format} | by {dataset.createdBy?.firstName ?? "Unknown"} {dataset.createdBy?.lastName ?? ""}
                       </p>
@@ -769,13 +739,14 @@ export default function DashboardPage() {
 
             {/* Validator task search */}
             <div className="relative mt-4">
-              <Search className="absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-muted" />
+              <Search className="pointer-events-none absolute left-4 top-1/2 size-4 -translate-y-1/2 text-muted" />
               <input
                 type="text"
                 value={validatorSearch}
                 onChange={(e) => setValidatorSearch(e.target.value)}
                 placeholder="Search pending tasks by title or description..."
-                className="field w-full pl-9 pr-8 text-sm"
+                className="field field-search w-full text-sm"
+                style={{ paddingLeft: "2.5rem", paddingRight: "2.25rem" }}
               />
               {validatorSearch && (
                 <button
@@ -854,7 +825,7 @@ export default function DashboardPage() {
 
       {/* Contributor Dashboard */}
       <ContributorOnly role={user?.role}>
-        <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-hidden">
+        <div className="flex flex-col gap-4">
           <div className="shrink-0 rounded-[2rem] bg-brand p-5 text-white shadow-[0_20px_44px_rgba(0,0,0,0.18)] md:px-7 md:py-6">
             <div className="flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
               <div>
@@ -885,37 +856,35 @@ export default function DashboardPage() {
 
           {feedback ? <div aria-live="polite" className="shrink-0 rounded-2xl border border-black/10 bg-white/70 px-4 py-3 text-sm">{feedback}</div> : null}
 
-          {/* Main content: tasks list + wallet side-by-side, capped in height so it doesn't overflow */}
-          <div className="grid min-h-0 flex-1 gap-5 overflow-hidden xl:grid-cols-[minmax(0,1.35fr)_minmax(22rem,0.55fr)]">
-            <article className="card flex min-h-0 flex-col overflow-hidden rounded-[2rem] p-5 md:p-6">
+          {/* Main 2-col: Available Tasks (left) + Payout Wallet (right) */}
+          <div className="grid gap-5 lg:grid-cols-[1fr_340px]">
+            {/* Available Tasks */}
+            <article className="card flex flex-col rounded-[2rem] p-5 md:p-6">
               <div className="flex shrink-0 items-start justify-between gap-4">
                 <div>
                   <p className="eyebrow text-xs text-muted">Task queue</p>
                   <h2 className="mt-2 font-mono text-2xl font-semibold tracking-[-0.04em]">Available tasks</h2>
                 </div>
                 <span className="rounded-full border border-black/10 bg-white/70 px-3 py-1.5 text-xs font-semibold text-muted">
-                  {filteredTasks.length} visible ({tasks.length} total)
+                  {filteredTasks.length} / {tasks.length}
                 </span>
               </div>
 
-              {/* Task search & filter controls */}
+              {/* Search & filter */}
               <div className="mt-4 flex shrink-0 flex-col gap-2.5 sm:flex-row sm:items-center">
                 <div className="relative flex-1">
-                  <Search className="absolute left-3 top-1/2 size-3.5 -translate-y-1/2 text-muted" />
+                  <Search className="pointer-events-none absolute left-4 top-1/2 size-4 -translate-y-1/2 text-muted" />
                   <input
                     type="text"
                     value={taskSearch}
                     onChange={(e) => setTaskSearch(e.target.value)}
-                    placeholder="Search tasks by title, description..."
-                    className="field w-full pl-8 pr-7 py-1.5 text-xs"
+                    placeholder="Search tasks..."
+                    className="field w-full text-sm"
+                    style={{ paddingLeft: "2.5rem", paddingRight: "2.25rem" }}
                   />
                   {taskSearch && (
-                    <button
-                      type="button"
-                      onClick={() => setTaskSearch("")}
-                      className="absolute right-2 top-1/2 -translate-y-1/2 text-muted hover:text-foreground"
-                    >
-                      <X className="size-3" />
+                    <button type="button" onClick={() => setTaskSearch("")} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted hover:text-foreground">
+                      <X className="size-3.5" />
                     </button>
                   )}
                 </div>
@@ -937,34 +906,28 @@ export default function DashboardPage() {
                 </div>
               </div>
 
-              {/* Scrollable task list — stays within the card, no page overflow */}
-              <div className="mt-4 min-h-0 flex-1 space-y-3 overflow-y-auto pr-1">
+              {/* Task list — show ~4 tasks then scroll */}
+              <div className="mt-4 max-h-[22rem] space-y-3 overflow-y-auto pr-1">
                 {filteredTasks.map((task) => {
                   const progress = task.requiredLabels ? Math.min((task.submittedLabels / task.requiredLabels) * 100, 100) : 0;
                   const statusDisplay = getTaskStatusDisplay(task.status);
-                  // Allow opening both pending and in_progress tasks
                   const canOpen = task.status === "pending" || task.status === "in_progress";
                   return (
-                    <div
-                      key={task.id}
-                      className={`rounded-[1.5rem] border p-4 transition hover:shadow-sm ${
-                        statusDisplay.cardClass
-                      }`}
-                    >
-                      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-                        <div className="min-w-0">
+                    <div key={task.id} className={`rounded-[1.5rem] border p-4 transition hover:shadow-sm ${statusDisplay.cardClass}`}>
+                      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                        <div className="min-w-0 flex-1">
                           <div className="flex flex-wrap items-center gap-2">
                             <p className="font-semibold">{task.title}</p>
                             <span className={`rounded-full px-2.5 py-1 text-[0.65rem] font-bold uppercase tracking-[0.12em] ${statusDisplay.badgeClass}`}>
                               {statusDisplay.label}
                             </span>
                           </div>
-                          <p className="mt-2 line-clamp-2 text-sm text-muted">{task.description}</p>
-                          <div className="mt-4 flex items-center gap-3 text-xs">
-                            <span className="font-semibold">{task.reward} SOL reward</span>
-                            <span className="text-muted">{task.submittedLabels} of {task.requiredLabels} labels</span>
+                          <p className="mt-1.5 line-clamp-1 text-sm text-muted">{task.description}</p>
+                          <div className="mt-3 flex items-center gap-3 text-xs">
+                            <span className="font-semibold">{task.reward} SOL</span>
+                            <span className="text-muted">{task.submittedLabels}/{task.requiredLabels} labels</span>
                           </div>
-                          <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-black/8">
+                          <div className="mt-2 h-1 overflow-hidden rounded-full bg-black/8">
                             <div className="h-full bg-black" style={{ width: `${progress}%` }} />
                           </div>
                         </div>
@@ -984,48 +947,48 @@ export default function DashboardPage() {
                 })}
                 {!filteredTasks.length ? (
                   <div className="rounded-3xl border border-dashed border-black/15 p-8 text-center text-sm text-muted">
-                    {tasks.length === 0
-                      ? "Your queue is clear. Refresh to look for newly published tasks."
-                      : "No tasks found matching your search or status filter."}
+                    {tasks.length === 0 ? "Refresh to look for new tasks." : "No tasks match your filter."}
                   </div>
                 ) : null}
               </div>
             </article>
 
-            <div className="flex min-h-0 flex-col">
-              <article className="rounded-[2rem] border border-black/10 bg-white p-5 md:p-6">
-                <div className="flex items-center gap-3">
-                  <span className="rounded-2xl bg-black p-2.5 text-white"><Wallet className="size-5" aria-hidden="true" /></span>
-                  <div><h3 className="font-semibold">Payout wallet</h3><p className="text-xs text-muted">Solana address for earnings</p></div>
+            {/* Payout Wallet (right column) */}
+            <article className="rounded-[2rem] border border-black/10 bg-white p-5 md:p-6">
+              <div className="flex items-center gap-3">
+                <span className="rounded-2xl bg-black p-2.5 text-white"><Wallet className="size-5" aria-hidden="true" /></span>
+                <div>
+                  <h3 className="font-semibold">Payout wallet</h3>
+                  <p className="text-xs text-muted">Solana address for earnings</p>
                 </div>
-                <form className="mt-5 space-y-3" onSubmit={connectWallet}>
-                  <div className="relative">
-                    <input
-                      className="field pr-10 text-sm font-mono"
-                      onChange={(event) => setWalletAddress(event.target.value)}
-                      placeholder="Solana wallet address (base58)"
-                      type={showWallet ? "text" : "password"}
-                      value={walletAddress}
-                    />
-                    {walletAddress ? (
-                      <button
-                        type="button"
-                        onClick={() => setShowWallet(!showWallet)}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full p-1 text-muted transition hover:text-foreground"
-                        aria-label={showWallet ? "Hide wallet address" : "Show wallet address"}
-                      >
-                        {showWallet ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
-                      </button>
-                    ) : null}
-                  </div>
-                  <button className="btn-secondary w-full" disabled={!canCallApi || isBusy} type="submit">Save wallet address</button>
-                </form>
-              </article>
-            </div>
+              </div>
+              <form className="mt-5 space-y-3" onSubmit={connectWallet}>
+                <div className="relative">
+                  <input
+                    className="field pr-10 font-mono text-sm"
+                    onChange={(event) => setWalletAddress(event.target.value)}
+                    placeholder="Solana wallet address (base58)"
+                    type={showWallet ? "text" : "password"}
+                    value={walletAddress}
+                  />
+                  {walletAddress ? (
+                    <button
+                      type="button"
+                      onClick={() => setShowWallet(!showWallet)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full p-1 text-muted transition hover:text-foreground"
+                    >
+                      {showWallet ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+                    </button>
+                  ) : null}
+                </div>
+                <button className="btn-secondary w-full" disabled={!canCallApi || isBusy} type="submit">Save wallet address</button>
+              </form>
+            </article>
           </div>
 
-          {/* Earnings & Performance — always visible at the bottom, never pushed off-screen */}
-          <div className="grid shrink-0 gap-5 lg:grid-cols-2">
+
+          {/* Earnings & Performance */}
+          <div className="grid gap-5 lg:grid-cols-2">
             <article className="card rounded-[2rem] p-5 md:p-6">
               <div className="flex items-center justify-between">
                 <div><p className="eyebrow text-xs text-muted">Quality snapshot</p><h2 className="mt-2 font-mono text-2xl font-semibold tracking-[-0.04em]">Performance</h2></div>

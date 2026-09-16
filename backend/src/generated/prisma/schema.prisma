@@ -38,26 +38,27 @@ model User {
 }
 
 model Dataset {
-  id                 String   @id @default(uuid()) @db.Uuid
+  id                 String    @id @default(uuid()) @db.Uuid
   name               String
   description        String?
   format             String
   filePath           String
-  totalRecords       Int      @default(0)
-  labeledRecords     Int      @default(0)
-  labelType          String   @default("text")
+  totalRecords       Int       @default(0)
+  labeledRecords     Int       @default(0)
+  labelType          String    @default("text")
   labelOptions       Json?
   labelSchema        Json?
-  totalRewardSOL     Float    @default(0)
-  rewardPerRecord    Float    @default(0)
-  maxLabelsPerRecord Int      @default(3)
-  consensusThreshold Float    @default(0.67)
+  totalRewardSOL     Float     @default(0)
+  rewardPerRecord    Float     @default(0)
+  maxLabelsPerRecord Int       @default(3)
+  consensusThreshold Float     @default(0.67)
+  deadline           DateTime?
   schema             Json?
   validationRules    Json?
-  isActive           Boolean  @default(true)
-  createdAt          DateTime @default(now())
-  updatedAt          DateTime @updatedAt
-  createdById        String   @db.Uuid
+  isActive           Boolean   @default(true)
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+  createdById        String    @db.Uuid
 
   createdBy User         @relation(fields: [createdById], references: [id])
   tasks     Task[]

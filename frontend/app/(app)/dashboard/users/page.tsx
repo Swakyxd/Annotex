@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { getSession } from "next-auth/react";
+import { Check, Copy, Trash2 } from "lucide-react";
 
 import { useAuth } from "@/components/providers/auth-provider";
 import { API_BASE_URL } from "@/lib/constants";
@@ -23,6 +24,7 @@ export default function UsersPage() {
   const [users, setUsers] = useState<UserItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [feedback, setFeedback] = useState("");
+  const [copiedId, setCopiedId] = useState<string | null>(null);
 
   const loadUsers = async () => {
     if (user?.role !== "admin") {
@@ -65,12 +67,52 @@ export default function UsersPage() {
     }
   };
 
+  const copyUserId = (id: string) => {
+    void navigator.clipboard.writeText(id).then(() => {
+      setCopiedId(id);
+      setTimeout(() => setCopiedId(null), 1500);
+    });
+  };
+
+  const deleteUser = async (userId: string, userEmail: string) => {
+    if (!window.confirm(`Are you sure you want to delete user ${userEmail}? This action cannot be undone.`)) {
+      return;
+    }
+
+    try {
+      const session = await getSession();
+      const token = session?.accessToken ?? accessToken;
+      if (!token) throw new Error("Missing session token.");
+
+      const response = await fetch(`${API_BASE_URL}/users/${userId}`, {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+        const payload = await response.json().catch(() => null);
+        throw new Error(payload?.message || `Failed to delete user (${response.status})`);
+      }
+
+      // Refresh the list after successful deletion
+      void loadUsers();
+    } catch (error) {
+      alert(error instanceof Error ? error.message : "Failed to delete user.");
+    }
+  };
+
   useEffect(() => {
     void loadUsers();
   }, [user?.role]);
 
   if (user?.role !== "admin") {
-    return <article className="card rounded-[1.75rem] p-6 text-sm text-red-700">This page is only available for admins.</article>;
+    return (
+      <article className="card rounded-[1.75rem] p-6 text-sm text-red-700">
+        This page is only available for admins.
+      </article>
+    );
   }
 
   return (
@@ -100,22 +142,49 @@ export default function UsersPage() {
               <th className="py-2 pr-4">Tasks</th>
               <th className="py-2 pr-4">Accuracy</th>
               <th className="py-2 pr-4">Earnings</th>
+              <th className="py-2 pr-4 text-right">Actions</th>
             </tr>
           </thead>
           <tbody>
             {users.map((row) => (
               <tr key={row.id} className="border-b border-black/5">
-                <td className="py-2 pr-4">{row.firstName} {row.lastName}</td>
+                <td className="py-2 pr-4">
+                  <div className="flex items-center gap-2">
+                    <span>{row.firstName} {row.lastName}</span>
+                    <button
+                      type="button"
+                      title="Copy User ID"
+                      onClick={() => copyUserId(row.id)}
+                      className="shrink-0 rounded-md p-1 text-muted transition hover:bg-black/5 hover:text-foreground"
+                    >
+                      {copiedId === row.id
+                        ? <Check className="size-3.5 text-green-600" />
+                        : <Copy className="size-3.5" />}
+                    </button>
+                  </div>
+                </td>
                 <td className="py-2 pr-4">{row.email}</td>
                 <td className="py-2 pr-4">{row.role}</td>
                 <td className="py-2 pr-4">{row.tasksCompleted}</td>
                 <td className="py-2 pr-4">{row.accuracyRate?.toFixed?.(2) ?? row.accuracyRate}%</td>
                 <td className="py-2 pr-4">{(row.totalEarnings ?? 0).toFixed(4)} SOL</td>
+                <td className="py-2 pr-4 text-right">
+                  <button
+                    type="button"
+                    onClick={() => void deleteUser(row.id, row.email)}
+                    title="Delete User"
+                    className="rounded-md p-2 text-red-600 hover:bg-red-50 transition"
+                  >
+                    <Trash2 className="size-4" />
+                  </button>
+                </td>
               </tr>
             ))}
           </tbody>
         </table>
-        {!loading && users.length === 0 ? <p className="text-sm text-muted mt-3">No users found.</p> : null}
+        {!loading && users.length === 0 ? (
+          <p className="text-sm text-muted mt-3">No users found.</p>
+        ) : null}
       </article>
     </section>
   );

@@ -121,4 +121,18 @@ export class TaskController {
 
     res.status(200).json(response);
   });
+
+  /**
+   * Delete a task by ID (admin only)
+   */
+  deleteTask = asyncHandler(async (req: Request, res: Response) => {
+    await this.taskService.deleteTask(req.params.id);
+    const response: ApiResponse = {
+      success: true,
+      message: 'Task deleted successfully',
+      data: null,
+      timestamp: new Date().toISOString(),
+    };
+    res.status(200).json(response);
+  });
 }

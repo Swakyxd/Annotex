@@ -105,4 +105,37 @@ export class UserController {
 
     res.status(200).json(response);
   });
+
+  /**
+   * Demote a validator back to contributor (Admin only)
+   */
+  demoteToContributor = asyncHandler(async (req: Request, res: Response) => {
+    const { id } = req.params;
+    const user = await this.userService.demoteToContributor(id);
+
+    const response: ApiResponse = {
+      success: true,
+      message: 'User demoted to contributor successfully',
+      data: user,
+      timestamp: new Date().toISOString(),
+    };
+
+    res.status(200).json(response);
+  });
+
+  /**
+   * Delete a user by ID
+   */
+  deleteUser = asyncHandler(async (req: Request, res: Response) => {
+    await this.userService.deleteUser(req.params.id);
+
+    const response: ApiResponse = {
+      success: true,
+      message: 'User deleted successfully',
+      data: null,
+      timestamp: new Date().toISOString(),
+    };
+
+    res.status(200).json(response);
+  });
 }

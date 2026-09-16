@@ -112,6 +112,7 @@ export const DatasetUploadSchema = z
     totalRewardSOL: z.coerce.number().finite().min(0).optional(),
     maxLabelsPerRecord: z.coerce.number().int().min(1).max(10).optional(),
     consensusThreshold: z.coerce.number().finite().min(0.5).max(1).optional(),
+    deadline: z.coerce.date().optional().nullable(),
   })
   .strict();
 

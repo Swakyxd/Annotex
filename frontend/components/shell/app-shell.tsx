@@ -21,7 +21,7 @@ const navigationByRole: Record<string, NavItem[]> = {
     { href: "/dashboard/tasks", label: "Tasks", caption: "Create & manage tasks", roles: ["admin"] },
     { href: "/dashboard/review", label: "Label Review", caption: "Review & approve labels", roles: ["admin"] },
     { href: "/dashboard/users", label: "Users", caption: "Manage contributors", roles: ["admin"] },
-    { href: "/dashboard/promote", label: "Promote", caption: "Promote contributors to validator", roles: ["admin"] },
+    { href: "/dashboard/promote", label: "Promote / Demote", caption: "Manage contributor & validator roles", roles: ["admin"] },
     { href: "/dashboard/payouts", label: "Payouts", caption: "Manage payouts", roles: ["admin"] },
     { href: "/dashboard/analytics", label: "Analytics", caption: "View metrics & insights", roles: ["admin"] },
   ],
@@ -82,10 +82,10 @@ export function AppShell({
   };
 
   return (
-    <div className="h-screen overflow-hidden px-4 py-4 md:px-6 md:py-6">
-      <div className="shell-grid mx-auto h-full max-w-7xl gap-5">
-        {/* Sidebar */}
-        <aside className="card overflow-y-auto rounded-4xl p-6 md:p-7">
+    <div className="min-h-screen px-4 py-4 md:px-6 md:py-6">
+      <div className="shell-grid mx-auto max-w-7xl gap-5 items-start">
+        {/* Sidebar — sticky so it stays in view while main content scrolls */}
+        <aside className="card rounded-4xl p-6 md:p-7 sticky top-4 md:top-6">
           <div className="flex h-full flex-col justify-between gap-8">
             {/* Header */}
             <div className="space-y-8">
@@ -143,7 +143,7 @@ export function AppShell({
         </aside>
 
         {/* Main Content */}
-        <div className="flex min-h-0 flex-col gap-5">
+        <div className="flex flex-col gap-5">
           {/* Header */}
           <header className="card shrink-0 rounded-4xl px-6 py-5 md:px-8">
             <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
@@ -170,9 +170,8 @@ export function AppShell({
             </div>
           </header>
 
-          {/* Page Content — flex-1 + min-h-0 so pages can fill remaining height; scrolls by default,
-              pages that manage their own internal scroll region (e.g. tasks) simply won't overflow it */}
-          <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">{children}</div>
+          {/* Page Content */}
+          <div className="flex flex-col">{children}</div>
         </div>
       </div>
     </div>

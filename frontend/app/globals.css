@@ -84,6 +84,12 @@ select {
   box-shadow: 0 0 0 4px var(--ring);
 }
 
+/* Search input variant — padding-left makes room for the leading icon */
+.field-search {
+  padding-left: 2.5rem;
+  padding-right: 2.25rem;
+}
+
 .btn-primary {
   background: linear-gradient(135deg, #111111 0%, #000000 100%);
   color: white;
