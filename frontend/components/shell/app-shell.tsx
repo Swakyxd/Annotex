@@ -19,8 +19,9 @@ const navigationByRole: Record<string, NavItem[]> = {
   admin: [
     { href: "/dashboard", label: "Dashboard", caption: "Admin overview & analytics", roles: ["admin"] },
     { href: "/dashboard/tasks", label: "Tasks", caption: "Create & manage tasks", roles: ["admin"] },
-    { href: "/dashboard/labels", label: "Label Review", caption: "Review & approve labels", roles: ["admin"] },
+    { href: "/dashboard/review", label: "Label Review", caption: "Review & approve labels", roles: ["admin"] },
     { href: "/dashboard/users", label: "Users", caption: "Manage contributors", roles: ["admin"] },
+    { href: "/dashboard/promote", label: "Promote", caption: "Promote contributors to validator", roles: ["admin"] },
     { href: "/dashboard/payouts", label: "Payouts", caption: "Manage payouts", roles: ["admin"] },
     { href: "/dashboard/analytics", label: "Analytics", caption: "View metrics & insights", roles: ["admin"] },
   ],
@@ -169,8 +170,9 @@ export function AppShell({
             </div>
           </header>
 
-          {/* Page Content — flex-1 + min-h-0 so pages can fill remaining height and implement their own scrolling */}
-          <div className="flex min-h-0 flex-1 flex-col">{children}</div>
+          {/* Page Content — flex-1 + min-h-0 so pages can fill remaining height; scrolls by default,
+              pages that manage their own internal scroll region (e.g. tasks) simply won't overflow it */}
+          <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">{children}</div>
         </div>
       </div>
     </div>

@@ -1,5 +1,5 @@
 import { prisma } from '../config/prisma.js';
-import { TaskStatus } from '../types/index.js';
+import { TaskStatus, UserRole } from '../types/index.js';
 
 export class AnalyticsService {
   /**
@@ -133,57 +133,77 @@ export class AnalyticsService {
    * Get quality metrics
    */
   async getQualityMetrics() {
-    // Average consensus scores
-    const tasks = await prisma.task.findMany({
-      where: { status: TaskStatus.VALIDATED },
-      include: { labels: true },
-    });
+    const reviewedLabelWhere = {
+      OR: [{ isAccepted: true }, { isRejected: true }],
+    };
 
-    let totalConsensusScore = 0;
-    let validatedTasksCount = 0;
-
-    for (const task of tasks) {
-      if (task.labels.length >= task.requiredLabels) {
-        const labelCounts = new Map<string, number>();
-        task.labels.forEach((label) => {
-          const count = labelCounts.get(label.value) || 0;
-          labelCounts.set(label.value, count + 1);
-        });
-
-        let maxCount = 0;
-        labelCounts.forEach((count) => {
-          if (count > maxCount) {
-            maxCount = count;
-          }
-        });
-
-        const consensusScore = maxCount / task.labels.length;
-        totalConsensusScore += consensusScore;
-        validatedTasksCount++;
-      }
-    }
+    const [reviewedLabels, approvedLabels, reviewedTasks, contributors, submittedCounts, acceptedCounts, reviewedCounts] = await Promise.all([
+      prisma.label.count({ where: reviewedLabelWhere }),
+      prisma.label.count({ where: { isAccepted: true } }),
+      prisma.label.findMany({
+        where: reviewedLabelWhere,
+        select: { taskId: true },
+        distinct: ['taskId'],
+      }),
+      prisma.user.findMany({
+        where: { role: UserRole.CONTRIBUTOR, isActive: true },
+        select: { id: true, firstName: true, lastName: true },
+      }),
+      prisma.label.groupBy({
+        by: ['contributorId'],
+        _count: { _all: true },
+      }),
+      prisma.label.groupBy({
+        by: ['contributorId'],
+        where: { isAccepted: true },
+        _count: { _all: true },
+      }),
+      prisma.label.groupBy({
+        by: ['contributorId'],
+        where: { OR: [{ isAccepted: true }, { isRejected: true }] },
+        _count: { _all: true },
+      }),
+    ]);
 
     const averageConsensusScore =
-      validatedTasksCount > 0 ? totalConsensusScore / validatedTasksCount : 0;
+      reviewedLabels > 0 ? (approvedLabels / reviewedLabels) * 100 : 0;
 
-    // Top performers
-    const topPerformers = await prisma.user.findMany({
-      where: { isActive: true },
-      orderBy: { accuracyRate: 'desc' },
-      take: 10,
-      select: {
-        id: true,
-        firstName: true,
-        lastName: true,
-        email: true,
-        accuracyRate: true,
-        tasksCompleted: true,
-      },
-    });
+    const submittedByContributor = new Map(
+      submittedCounts.map((item) => [item.contributorId, item._count._all])
+    );
+    const acceptedByContributor = new Map(
+      acceptedCounts.map((item) => [item.contributorId, item._count._all])
+    );
+    const reviewedByContributor = new Map(
+      reviewedCounts.map((item) => [item.contributorId, item._count._all])
+    );
+
+    const contributorsWithPerformance = contributors
+      .map((contributor) => {
+        const labelsSubmitted = submittedByContributor.get(contributor.id) || 0;
+        const acceptedLabels = acceptedByContributor.get(contributor.id) || 0;
+        const reviewedLabels = reviewedByContributor.get(contributor.id) || 0;
+
+        return {
+          ...contributor,
+          accuracyRate:
+            reviewedLabels > 0 ? Number(((acceptedLabels / reviewedLabels) * 100).toFixed(1)) : null,
+          tasksCompleted: labelsSubmitted,
+          labelsSubmitted,
+          reviewedLabels,
+        };
+      })
+      .filter((contributor) => contributor.labelsSubmitted > 0);
+    const topPerformers = contributorsWithPerformance
+      .sort((left, right) => (right.accuracyRate ?? -1) - (left.accuracyRate ?? -1))
+      .slice(0, 10);
 
     return {
-      averageConsensusScore: averageConsensusScore.toFixed(2),
-      validatedTasks: validatedTasksCount,
+      averageConsensusScore: averageConsensusScore.toFixed(1),
+      validatedTasks: reviewedTasks.length,
+      reviewedLabels,
+      approvedLabels,
+      activeContributors: contributorsWithPerformance.length,
       topPerformers,
     };
   }
