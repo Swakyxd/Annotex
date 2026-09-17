@@ -1,0 +1,31 @@
+# Normalize text in the repository, and decide line endings per type rather than
+# leaving it to each developer's core.autocrlf.
+* text=auto
+
+# These MUST stay LF regardless of platform.
+#
+# Terraform reads the .tftpl templates straight from the working tree and renders
+# them into EC2 user_data and an SSM document, both of which are executed by bash
+# on Linux. Checked out with CRLF on Windows, every line fails with
+# "$'\r': command not found" and the instance bootstrap dies in a way that is
+# very hard to read. The same applies to the shell scripts and to anything
+# COPYed into a container.
+*.sh            text eol=lf
+*.tftpl         text eol=lf
+*.yml           text eol=lf
+*.yaml          text eol=lf
+Dockerfile      text eol=lf
+*.Dockerfile    text eol=lf
+.env.example    text eol=lf
+*.tf            text eol=lf
+*.hcl           text eol=lf
+
+# Binary: never normalize, never diff as text.
+*.png           binary
+*.jpg           binary
+*.jpeg          binary
+*.gif           binary
+*.webp          binary
+*.ico           binary
+*.pdf           binary
+*.zip           binary
