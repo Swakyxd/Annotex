@@ -1,0 +1,12 @@
+// Copy to terraform.tfvars and edit THAT file — this one is committed to git,
+// so a real address here would be published and would not be read by Terraform.
+//
+//   cp terraform.tfvars.example terraform.tfvars
+
+region      = "ap-south-1"
+alert_email = "you@example.com"
+
+// Alert thresholds. monthly_budget_usd sits just above the projected t3.small
+// bill; credit_budget_usd is the starting credit balance to burn down against.
+monthly_budget_usd = "22"
+credit_budget_usd  = "138"

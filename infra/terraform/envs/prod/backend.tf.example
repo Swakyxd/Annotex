@@ -1,0 +1,22 @@
+// Copy to backend.tf and replace <account_id> with the value from
+//   cd ../../bootstrap && terraform output state_bucket_name
+//
+// Backend blocks are resolved before the resource graph exists, so they cannot
+// interpolate variables. The bucket name has to be a literal.
+
+terraform {
+  backend "s3" {
+    bucket = "annotex-tfstate-<account_id>"
+    key    = "prod/terraform.tfstate"
+    region = "ap-south-1"
+
+    encrypt = true
+
+    // Terraform >= 1.11: mutual exclusion via an S3 conditional write that
+    // creates prod/terraform.tfstate.tflock. Replaces the DynamoDB lock table.
+    //
+    // The bucket must NOT have Object Lock enabled — a retention rule would
+    // block deleting the lock file and wedge every subsequent apply.
+    use_lockfile = true
+  }
+}

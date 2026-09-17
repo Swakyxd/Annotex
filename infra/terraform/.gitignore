@@ -1,0 +1,22 @@
+.terraform/
+.terraform.lock.hcl.bak
+
+# Bootstrap runs on local state until it is migrated into S3. Never commit it —
+# it contains the account id and, after Phase 2, generated secrets.
+*.tfstate
+*.tfstate.*
+crash.log
+
+# terraform.tfvars files hold the alert email and treasury wallet. The
+# .example files are the committed templates.
+terraform.tfvars
+*.auto.tfvars
+
+# Saved plan files embed the generated JWT/Postgres/NextAuth secrets in
+# plaintext. Never commit one.
+tfplan
+*.tfplan
+
+# backend.tf carries the account id. Harmless, but it is generated per-account
+# from backend.tf.example rather than shared.
+backend.tf

@@ -1,5 +1,15 @@
 # Deploying Annotex to AWS
 
+> **Production is now provisioned with Terraform.** See
+> [`infra/terraform/README.md`](infra/terraform/README.md) for the current path: one
+> `terraform apply` builds the whole stack, GitHub Actions builds the images and pushes
+> them to ECR, and deploys run through an SSM document with no SSH keys anywhere.
+>
+> This guide still describes the manual console-and-script route. It is useful for
+> understanding what the infrastructure actually does, for standing up a throwaway box,
+> and for recovering by hand — but it builds on the instance, which the Terraform path
+> deliberately does not.
+
 This guide takes you from nothing to a live HTTPS site on a single AWS EC2 instance. It
 assumes you have never used AWS before and explains why each step exists, not just what to
 click.
