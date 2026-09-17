@@ -68,6 +68,23 @@ variable "github_branch" {
   default     = "main"
 }
 
+variable "github_oidc_sub_prefix" {
+  description = <<-EOT
+    Prefix of the OIDC subject claim GitHub sends, without the trailing context.
+
+    Leave empty for the classic form, derived as "repo:<owner>/<name>". Set it
+    explicitly when the repository has immutable subject claims enabled, where
+    GitHub substitutes numeric owner and repository IDs and sends
+    "repo:<owner>@<owner_id>/<name>@<repo_id>" instead. The two do not match, and
+    a mismatch fails as "Not authorized to perform sts:AssumeRoleWithWebIdentity".
+
+    Read the current value with:
+      gh api repos/<owner>/<name>/actions/oidc/customization/sub
+  EOT
+  type        = string
+  default     = ""
+}
+
 variable "alerts_topic_arn" {
   description = "SNS topic from the bootstrap module. Receives CloudWatch alarms and the on-box disk-space warning."
   type        = string
