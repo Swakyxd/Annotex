@@ -11,6 +11,11 @@ resource "aws_iam_openid_connect_provider" "github" {
   thumbprint_list = [data.tls_certificate.github.certificates[0].sha1_fingerprint]
 }
 
+locals {
+  github_sub_prefix = var.github_oidc_sub_prefix != "" ? var.github_oidc_sub_prefix : "repo:${var.github_repo}"
+  github_sub        = "${local.github_sub_prefix}:ref:refs/heads/${var.github_branch}"
+}
+
 resource "aws_iam_role" "github_actions" {
   name = "${local.name}-github-actions"
 
@@ -26,8 +31,12 @@ resource "aws_iam_role" "github_actions" {
         }
         # Pinned to one branch. A wildcard such as repo:owner/name:* would let a
         # workflow on any pull request branch assume this role and deploy.
+        #
+        # The prefix is not always "repo:<owner>/<name>": with immutable subject
+        # claims enabled GitHub sends numeric owner and repo IDs instead. See
+        # var.github_oidc_sub_prefix.
         StringLike = {
-          "token.actions.githubusercontent.com:sub" = "repo:${var.github_repo}:ref:refs/heads/${var.github_branch}"
+          "token.actions.githubusercontent.com:sub" = local.github_sub
         }
       }
     }]
