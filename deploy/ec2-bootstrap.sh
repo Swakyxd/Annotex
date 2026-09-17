@@ -1,5 +1,14 @@
 #!/usr/bin/env bash
 #
+# SUPERSEDED by infra/terraform. The production stack is now provisioned by
+# Terraform, which renders this script's logic into the instance's user_data
+# (infra/terraform/envs/prod/templates/user_data.sh.tftpl) and deploys through
+# an SSM document rather than SSH.
+#
+# Kept because it still works for standing up a throwaway box by hand, and
+# because --verify-only is a useful set of checks. It clones and builds on the
+# instance, which the Terraform path deliberately does not do.
+#
 # Annotex -> AWS EC2 (Ubuntu 24.04) one-shot bootstrap.
 #
 # Takes a blank EC2 instance to a live HTTPS site: swap, Docker, clone, secrets,
@@ -29,7 +38,7 @@ say()  { printf '\n\033[1;36m==> %s\033[0m\n' "$1"; }
 warn() { printf '\033[1;33m    %s\033[0m\n' "$1"; }
 die()  { printf '\n\033[1;31mFAILED: %s\033[0m\n' "$1" >&2; exit 1; }
 
-usage() { sed -n '3,19p' "$0" | sed 's/^# \{0,1\}//'; exit 0; }
+usage() { sed -n '3,28p' "$0" | sed 's/^# \{0,1\}//'; exit 0; }
 
 VERIFY_ONLY=0
 case "${1:-}" in

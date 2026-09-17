@@ -1,0 +1,345 @@
+#!/usr/bin/env bash
+#
+# Annotex instance bootstrap. Rendered by Terraform and run once by cloud-init.
+#
+# Derived from deploy/ec2-bootstrap.sh, with the parts that do not belong on a
+# Terraform-managed box removed:
+#   - no git clone and no build; images are pulled from ECR
+#   - no interactive prompts; cloud-init has no tty
+#   - no IMDS lookup for the public IP; Terraform injects it, so there is no race
+#
+# Editing this file does NOT update a running instance: aws_instance ignores
+# user_data changes precisely so a tweak here cannot destroy the database.
+# Roll changes out through the SSM deploy document, or apply them by hand.
+set -euxo pipefail
+exec &> >(tee -a /var/log/annotex-bootstrap.log)
+
+APP_DIR="${app_dir}"
+HOST="${host}"
+REGION="${region}"
+SSM_PREFIX="${ssm_prefix}"
+ECR_REGISTRY="${registry}"
+BACKUP_BUCKET="${backup_bucket}"
+ALERTS_TOPIC_ARN="${alerts_topic_arn}"
+
+export DEBIAN_FRONTEND=noninteractive
+
+# ------------------------------------------------------------------ 1. swap
+#
+# 2 GiB. The original 4 GiB was sized to survive `next build` on a 1 GB box;
+# nothing is built here any more, so this is only headroom for Postgres and the
+# two Node runtimes sharing 2 GiB of RAM.
+if ! swapon --show | grep -q /swapfile; then
+  fallocate -l 2G /swapfile
+  chmod 600 /swapfile
+  mkswap /swapfile
+  swapon /swapfile
+  grep -q '^/swapfile' /etc/fstab || echo '/swapfile none swap sw 0 0' >> /etc/fstab
+fi
+
+# --------------------------------------------------- 2. packages + hardening
+apt-get update -qq
+apt-get install -y -qq \
+  ca-certificates curl gnupg jq unzip \
+  nginx certbot python3-certbot-nginx \
+  unattended-upgrades fail2ban
+
+# The AMI already disables password logins and the security group closes port 22
+# entirely; fail2ban is defence in depth.
+systemctl enable --now unattended-upgrades || true
+systemctl enable --now fail2ban || true
+
+# ------------------------------------------------------------ 3. AWS CLI v2
+#
+# Ubuntu's packaged awscli lags badly. The instance needs a current CLI for
+# get-parameters-by-path auto-pagination and ecr get-login-password.
+if ! command -v aws >/dev/null; then
+  curl -fsSL "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o /tmp/awscliv2.zip
+  unzip -q /tmp/awscliv2.zip -d /tmp
+  /tmp/aws/install
+  rm -rf /tmp/aws /tmp/awscliv2.zip
+fi
+
+# --------------------------------------------------------------- 4. Docker
+if ! command -v docker >/dev/null; then
+  install -m 0755 -d /etc/apt/keyrings
+  curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+  chmod a+r /etc/apt/keyrings/docker.gpg
+  echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu $(. /etc/os-release && echo "$VERSION_CODENAME") stable" \
+    > /etc/apt/sources.list.d/docker.list
+  apt-get update -qq
+  apt-get install -y -qq docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+  usermod -aG docker ubuntu || true
+fi
+systemctl enable --now docker
+
+# ---------------------------------------------------------- 5. app directory
+mkdir -p "$APP_DIR"
+chmod 755 "$APP_DIR"
+
+cat > "$APP_DIR/docker-compose.yml" <<'COMPOSE_EOF'
+${compose_file}
+COMPOSE_EOF
+
+# --------------------------------------------------- 6. environment renderer
+#
+# .env.production is regenerated from Parameter Store rather than stored on disk
+# as the source of truth, so rotating a secret is a Terraform apply plus a
+# redeploy — never an edit on the box.
+cat > "$APP_DIR/render-env.sh" <<'RENDER_EOF'
+#!/usr/bin/env bash
+set -euo pipefail
+
+APP_DIR="__APP_DIR__"
+REGION="__REGION__"
+SSM_PREFIX="__SSM_PREFIX__"
+ECR_REGISTRY="__ECR_REGISTRY__"
+
+TMP=$(mktemp)
+trap 'rm -f "$TMP"' EXIT
+chmod 600 "$TMP"
+
+# Defaults first. Parameter Store values are appended after, and Compose takes
+# the last occurrence of a duplicate key — so anything in SSM wins.
+{
+  echo "PAYOUT_TOKEN_MINT="
+  echo "ECR_REGISTRY=$ECR_REGISTRY"
+} > "$TMP"
+
+# The CLI auto-paginates, so this returns every parameter under the prefix and
+# not just the first page of ten.
+aws ssm get-parameters-by-path \
+  --path "$SSM_PREFIX" \
+  --with-decryption \
+  --recursive \
+  --region "$REGION" \
+  --output json \
+| jq -r '.Parameters[] | "\(.Name | split("/") | last)=\(.Value)"' >> "$TMP"
+
+# IMAGE_TAG comes from the deploy script's argument when redeploying; fall back
+# to whatever Parameter Store recorded as the last good release.
+if [ -n "$${IMAGE_TAG_OVERRIDE:-}" ]; then
+  echo "IMAGE_TAG=$IMAGE_TAG_OVERRIDE" >> "$TMP"
+fi
+
+install -m 600 -o root -g root "$TMP" "$APP_DIR/.env.production"
+
+# This is the failure mode that produced a silent crash-loop before: prisma
+# migrate deploy reads DIRECT_URL, and backend/Dockerfile used to bake a
+# localhost placeholder as a fallback. Fail loudly instead.
+if grep -q 'placeholder' "$APP_DIR/.env.production"; then
+  echo "FATAL: rendered env contains a placeholder DSN" >&2
+  exit 1
+fi
+RENDER_EOF
+
+sed -i \
+  -e "s|__APP_DIR__|$APP_DIR|g" \
+  -e "s|__REGION__|$REGION|g" \
+  -e "s|__SSM_PREFIX__|$SSM_PREFIX|g" \
+  -e "s|__ECR_REGISTRY__|$ECR_REGISTRY|g" \
+  "$APP_DIR/render-env.sh"
+chmod 700 "$APP_DIR/render-env.sh"
+
+# ------------------------------------------------------------- 7. boot start
+#
+# Brings the last known good release back up after a reboot or an EC2
+# auto-recovery, without waiting for a CI run.
+cat > /etc/systemd/system/annotex.service <<EOF
+[Unit]
+Description=Annotex application stack
+Requires=docker.service
+After=docker.service network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=true
+WorkingDirectory=$APP_DIR
+ExecStartPre=$APP_DIR/render-env.sh
+ExecStart=/usr/bin/docker compose --env-file $APP_DIR/.env.production -f $APP_DIR/docker-compose.yml up -d
+ExecStop=/usr/bin/docker compose --env-file $APP_DIR/.env.production -f $APP_DIR/docker-compose.yml down
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+# ---------------------------------------------------------------- 8. nginx
+cat > /etc/nginx/sites-available/annotex <<'NGINX_EOF'
+${nginx_conf}
+NGINX_EOF
+
+ln -sfn /etc/nginx/sites-available/annotex /etc/nginx/sites-enabled/annotex
+rm -f /etc/nginx/sites-enabled/default
+nginx -t
+systemctl reload nginx
+
+# ----------------------------------------------------------------- 9. TLS
+#
+# Certbot needs port 80 answering at the Elastic IP, which is attached by a
+# separate Terraform resource that may not have completed when this script runs.
+# Rather than race it at boot, retry hourly until issuance succeeds; the
+# ConditionPathExists then makes every later run a no-op.
+cat > /etc/systemd/system/annotex-tls.service <<EOF
+[Unit]
+Description=Obtain Let's Encrypt certificate for $HOST
+ConditionPathExists=!/etc/letsencrypt/live/$HOST/fullchain.pem
+After=network-online.target nginx.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/certbot --nginx -d $HOST --non-interactive --agree-tos -m ${letsencrypt_email} --redirect --no-eff-email
+EOF
+
+cat > /etc/systemd/system/annotex-tls.timer <<'EOF'
+[Unit]
+Description=Retry certificate issuance until it succeeds
+[Timer]
+OnBootSec=2min
+OnUnitActiveSec=1h
+[Install]
+WantedBy=timers.target
+EOF
+
+# ------------------------------------------------------------- 10. backups
+#
+# The only recovery point for the database and uploads. Both live on this
+# instance's root volume, so without this a terminated instance is total loss.
+cat > "$APP_DIR/backup.sh" <<'BACKUP_EOF'
+#!/usr/bin/env bash
+set -euo pipefail
+
+APP_DIR="__APP_DIR__"
+REGION="__REGION__"
+BUCKET="__BACKUP_BUCKET__"
+RETAIN_DAYS="$${RETAIN_DAYS:-3}"
+BACKUP_DIR="$APP_DIR/backups"
+
+COMPOSE="docker compose --env-file $APP_DIR/.env.production -f $APP_DIR/docker-compose.yml"
+
+PG_USER=$(grep '^POSTGRES_USER=' "$APP_DIR/.env.production" | cut -d= -f2)
+PG_DB=$(grep '^POSTGRES_DB=' "$APP_DIR/.env.production" | cut -d= -f2)
+
+mkdir -p "$BACKUP_DIR"
+STAMP=$(date +%F-%H%M)
+DB_FILE="$BACKUP_DIR/annotex-db-$STAMP.sql.gz"
+UP_FILE="$BACKUP_DIR/annotex-uploads-$STAMP.tar.gz"
+
+$COMPOSE exec -T db pg_dump -U "$PG_USER" "$PG_DB" | gzip > "$DB_FILE"
+[ -s "$DB_FILE" ] || { echo "database dump is empty" >&2; exit 1; }
+
+# Tar from inside the backend container, which already has the uploads volume
+# mounted — avoids resolving the prefixed Docker volume name on the host.
+$COMPOSE exec -T backend tar czf - -C /app/uploads . > "$UP_FILE"
+
+# Prefixes match the S3 lifecycle rules in storage.tf, which expire db/ after 30
+# days and uploads/ after 14.
+aws s3 cp "$DB_FILE" "s3://$BUCKET/db/" --region "$REGION" --only-show-errors
+aws s3 cp "$UP_FILE" "s3://$BUCKET/uploads/" --region "$REGION" --only-show-errors
+
+# Local copies are just a staging area; S3 holds the real retention.
+find "$BACKUP_DIR" -name 'annotex-*' -type f -mtime "+$RETAIN_DAYS" -delete
+BACKUP_EOF
+
+sed -i \
+  -e "s|__APP_DIR__|$APP_DIR|g" \
+  -e "s|__REGION__|$REGION|g" \
+  -e "s|__BACKUP_BUCKET__|$BACKUP_BUCKET|g" \
+  "$APP_DIR/backup.sh"
+chmod 700 "$APP_DIR/backup.sh"
+
+cat > /etc/systemd/system/annotex-backup.service <<EOF
+[Unit]
+Description=Annotex database and uploads backup
+[Service]
+Type=oneshot
+ExecStart=/bin/bash $APP_DIR/backup.sh
+EOF
+
+cat > /etc/systemd/system/annotex-backup.timer <<'EOF'
+[Unit]
+Description=Nightly Annotex backup
+[Timer]
+OnCalendar=*-*-* 03:30:00
+Persistent=true
+[Install]
+WantedBy=timers.target
+EOF
+
+# --------------------------------------------------------- 11. disk hygiene
+#
+# A full root volume is the most likely real outage here, and it corrupts
+# Postgres rather than merely stopping it. Pruning handles the predictable
+# cause; the alert covers the rest.
+cat > /etc/systemd/system/annotex-prune.service <<'EOF'
+[Unit]
+Description=Reclaim Docker disk space
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/docker system prune -af --filter until=168h
+EOF
+
+cat > /etc/systemd/system/annotex-prune.timer <<'EOF'
+[Unit]
+Description=Weekly Docker cleanup
+[Timer]
+OnCalendar=Sun *-*-* 04:30:00
+Persistent=true
+[Install]
+WantedBy=timers.target
+EOF
+
+cat > "$APP_DIR/diskcheck.sh" <<'DISK_EOF'
+#!/usr/bin/env bash
+set -euo pipefail
+
+REGION="__REGION__"
+TOPIC="__ALERTS_TOPIC_ARN__"
+HOST="__HOST__"
+
+USED=$(df --output=pcent / | tr -dc '0-9')
+if [ "$USED" -ge 85 ]; then
+  aws sns publish \
+    --region "$REGION" \
+    --topic-arn "$TOPIC" \
+    --subject "Annotex disk at $USED%" \
+    --message "Root volume on $HOST is $USED% full. Postgres, uploads and Docker images share this volume; a full disk corrupts the database. Run: docker system prune -af" \
+    >/dev/null
+fi
+DISK_EOF
+
+sed -i \
+  -e "s|__REGION__|$REGION|g" \
+  -e "s|__ALERTS_TOPIC_ARN__|$ALERTS_TOPIC_ARN|g" \
+  -e "s|__HOST__|$HOST|g" \
+  "$APP_DIR/diskcheck.sh"
+chmod 700 "$APP_DIR/diskcheck.sh"
+
+cat > /etc/systemd/system/annotex-diskcheck.service <<EOF
+[Unit]
+Description=Warn when the root volume is nearly full
+[Service]
+Type=oneshot
+ExecStart=/bin/bash $APP_DIR/diskcheck.sh
+EOF
+
+cat > /etc/systemd/system/annotex-diskcheck.timer <<'EOF'
+[Unit]
+Description=Hourly disk space check
+[Timer]
+OnBootSec=10min
+OnUnitActiveSec=1h
+[Install]
+WantedBy=timers.target
+EOF
+
+# ------------------------------------------------------------- 12. activate
+systemctl daemon-reload
+systemctl enable annotex.service
+systemctl enable --now annotex-tls.timer annotex-backup.timer annotex-prune.timer annotex-diskcheck.timer
+
+# The first real release comes from CI. Starting the stack now would only
+# fail to pull the seeded "bootstrap" tag, so leave annotex.service enabled
+# but not started — it will come up on the next boot, or when CI deploys.
+echo "bootstrap complete for $HOST"

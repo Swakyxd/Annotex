@@ -25,9 +25,15 @@ FROM node:20-alpine
 
 WORKDIR /app
 
-ARG DIRECT_URL="postgresql://placeholder:placeholder@localhost:5432/postgres?schema=public"
-ENV DIRECT_URL=${DIRECT_URL}
+# dataset.service.ts shells out to `unzip` and parses its listing output.
+# node:20-alpine ships only BusyBox's applet, whose `-l` columns differ from
+# Info-ZIP's, so the parser needs the real thing.
+RUN apk add --no-cache unzip
 
+# DIRECT_URL is deliberately NOT defaulted here. prisma migrate deploy reads it
+# rather than DATABASE_URL, so a placeholder fallback in this stage means
+# migrations silently target localhost and the container crash-loops with no
+# useful error. Unset, Prisma fails immediately and says why.
 COPY package*.json ./
 COPY prisma.config.ts ./
 COPY prisma ./prisma

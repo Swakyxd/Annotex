@@ -28,7 +28,34 @@ services:
       # directly from the internet even if a security group is widened.
       - "127.0.0.1:5433:5432"
 
+  # One-shot migration runner. Compose only starts services in a profile when
+  # asked, so this stays out of `up -d` and is invoked explicitly:
+  #   docker compose run --rm migrate
+  #
+  # Running migrations here rather than in the backend's start command means a
+  # failure surfaces as a real exit code instead of an opaque restart loop, and
+  # there is no race if more than one backend is ever started.
+  migrate:
+    image: ${ECR_REGISTRY:-annotex}/annotex/backend:${IMAGE_TAG:-local}
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    profiles: ["tools"]
+    restart: "no"
+    logging: *default-logging
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgresql://${POSTGRES_USER:-annotex}:${POSTGRES_PASSWORD:-annotex}@db:5432/${POSTGRES_DB:-annotex_db}?schema=public
+      DIRECT_URL: postgresql://${POSTGRES_USER:-annotex}:${POSTGRES_PASSWORD:-annotex}@db:5432/${POSTGRES_DB:-annotex_db}?schema=public
+    command: ["npx", "prisma", "migrate", "deploy"]
+
   backend:
+    # image + build together: Compose builds only when passed --build, so this
+    # one file serves both a local prod-parity build and an ECR-pull deploy.
+    image: ${ECR_REGISTRY:-annotex}/annotex/backend:${IMAGE_TAG:-local}
     build:
       context: ./backend
       dockerfile: Dockerfile
@@ -63,7 +90,6 @@ services:
       LOG_LEVEL: ${LOG_LEVEL:-info}
       LOG_FILE_PATH: logs/
       ALLOW_DEGRADED_STARTUP: "false"
-    command: sh -c "npm run prisma:deploy && npm start"
     volumes:
       # Uploaded datasets and extracted images are served from here by app.ts.
       # Without a volume they are destroyed on every `up --build`.
@@ -72,6 +98,7 @@ services:
       - "127.0.0.1:5000:5000"
 
   frontend:
+    image: ${ECR_REGISTRY:-annotex}/annotex/frontend:${IMAGE_TAG:-local}
     build:
       context: ./frontend
       dockerfile: Dockerfile

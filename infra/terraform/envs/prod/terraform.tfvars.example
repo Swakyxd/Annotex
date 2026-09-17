@@ -1,0 +1,29 @@
+// Copy to terraform.tfvars and fill in. terraform.tfvars is gitignored.
+
+region            = "ap-south-1"
+availability_zone = "ap-south-1a"
+
+// t3.small = 2 GiB RAM, roughly $16/mo in ap-south-1.
+// t3.micro = 1 GiB, roughly $8/mo.
+// This account has no 12-month free tier, so neither size is free.
+instance_type  = "t3.small"
+root_volume_gb = 16
+
+// Empty derives an sslip.io hostname from the Elastic IP, which needs no DNS.
+// Setting a real domain here also requires rebuilding the frontend image, since
+// NEXT_PUBLIC_API_BASE_URL is inlined at build time.
+domain = ""
+
+letsencrypt_email = "you@example.com"
+
+// The backend refuses to start in production without this.
+treasury_wallet = "11111111111111111111111111111111"
+
+// From: cd ../../bootstrap && terraform output alerts_topic_arn
+alerts_topic_arn = "arn:aws:sns:ap-south-1:000000000000:annotex-alerts"
+
+github_repo   = "myaumyauverse/Annotex"
+github_branch = "main"
+
+// Break-glass only. Port 22 stays closed; shell access is SSM Session Manager.
+ssh_cidrs = []

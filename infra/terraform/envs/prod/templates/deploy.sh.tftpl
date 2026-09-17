@@ -1,0 +1,84 @@
+#!/usr/bin/env bash
+#
+# Body of the annotex-deploy SSM document. Runs as root on the instance.
+# {{ imageTag }} is substituted by SSM before execution.
+set -uo pipefail
+
+APP_DIR="${app_dir}"
+REGION="${region}"
+REGISTRY="${registry}"
+SSM_PREFIX="${ssm_prefix}"
+
+TAG="{{ imageTag }}"
+LAST_GOOD_FILE="$APP_DIR/.last-good"
+COMPOSE="docker compose --env-file $APP_DIR/.env.production -f $APP_DIR/docker-compose.yml"
+
+log() { printf '==> %s\n' "$1"; }
+
+start_stack() {
+  local tag="$1"
+
+  log "rendering environment for $tag"
+  IMAGE_TAG_OVERRIDE="$tag" "$APP_DIR/render-env.sh" || return 1
+
+  log "pulling images"
+  $COMPOSE pull --quiet || return 1
+
+  # A separate one-shot step, not the backend's start command. A failed
+  # migration must fail the deploy with an exit code rather than disappear into
+  # a container restart loop.
+  log "applying migrations"
+  $COMPOSE run --rm migrate || return 1
+
+  log "starting services"
+  $COMPOSE up -d --remove-orphans || return 1
+}
+
+healthy() {
+  # /health does a real SELECT 1 and returns 503 when the database is
+  # unreachable, so this proves more than "the process is listening".
+  local i
+  for i in $(seq 1 30); do
+    if curl -fsS http://localhost:5000/health >/dev/null 2>&1; then
+      return 0
+    fi
+    sleep 5
+  done
+  return 1
+}
+
+aws ecr get-login-password --region "$REGION" \
+  | docker login --username AWS --password-stdin "$REGISTRY" \
+  || { echo "FATAL: ECR login failed" >&2; exit 1; }
+
+if start_stack "$TAG" && healthy; then
+  log "healthy at $TAG"
+  echo "$TAG" > "$LAST_GOOD_FILE"
+  aws ssm put-parameter \
+    --name "$SSM_PREFIX/IMAGE_TAG" \
+    --value "$TAG" \
+    --type String \
+    --overwrite \
+    --region "$REGION" >/dev/null
+  log "deploy complete"
+  exit 0
+fi
+
+echo "health check failed for $TAG" >&2
+$COMPOSE logs --tail=80 backend || true
+
+if [ ! -s "$LAST_GOOD_FILE" ]; then
+  echo "FATAL: no previous good release recorded; leaving the stack as-is for inspection" >&2
+  exit 1
+fi
+
+PREV=$(cat "$LAST_GOOD_FILE")
+echo "rolling back to $PREV" >&2
+
+if start_stack "$PREV" && healthy; then
+  echo "rolled back to $PREV" >&2
+else
+  echo "FATAL: rollback to $PREV also failed — manual intervention required" >&2
+fi
+
+exit 1

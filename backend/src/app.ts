@@ -18,6 +18,13 @@ import routes from './routes/index.js';
  * Initialize Express application with all middleware and routes
  */
 export function initializeApp(app: Application): void {
+  // Exactly one proxy hop: nginx on the same host. Without this every request
+  // appears to come from 127.0.0.1, so express-rate-limit buckets the entire
+  // internet together and authRateLimiter's max of 5 locks out all users at
+  // once. `true` would be worse than the bug — it trusts the whole
+  // X-Forwarded-For chain, letting any client spoof the left-most address.
+  app.set('trust proxy', 1);
+
   // Security middleware
   app.use(
     helmet({

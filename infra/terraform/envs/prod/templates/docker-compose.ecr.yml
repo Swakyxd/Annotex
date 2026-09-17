@@ -1,0 +1,114 @@
+# Runtime manifest on the instance. Images are PULLED from ECR — nothing is ever
+# built here. Every value comes from .env.production, which the boot script
+# renders from SSM Parameter Store.
+#
+# Kept as a plain file (not a .tftpl) so that Compose's ${VAR} syntax does not
+# collide with Terraform's. It is injected into user_data as an opaque string.
+
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    logging: *default-logging
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      - annotex-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    ports:
+      # Loopback only: nginx proxies from the host, so nothing should reach these
+      # directly from the internet even if the security group is widened.
+      - "127.0.0.1:5433:5432"
+
+  # One-shot migration runner, invoked by the deploy document before `up -d`.
+  # profiles: keeps it out of `docker compose up`.
+  #
+  # Running migrations here rather than in the backend's start command means a
+  # failed migration fails the deploy with a real exit code, instead of an opaque
+  # container restart loop.
+  migrate:
+    image: ${ECR_REGISTRY}/annotex/backend:${IMAGE_TAG}
+    profiles: ["tools"]
+    restart: "no"
+    logging: *default-logging
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      # prisma.config.ts resolves the migration datasource from DIRECT_URL, not
+      # DATABASE_URL.
+      DIRECT_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}?schema=public
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}?schema=public
+    command: ["npx", "prisma", "migrate", "deploy"]
+
+  backend:
+    image: ${ECR_REGISTRY}/annotex/backend:${IMAGE_TAG}
+    restart: unless-stopped
+    logging: *default-logging
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      PORT: 5000
+      API_VERSION: ${API_VERSION}
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}?schema=public
+      DIRECT_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}?schema=public
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_USERNAME: ${POSTGRES_USER}
+      DB_PASSWORD: ${POSTGRES_PASSWORD}
+      DB_NAME: ${POSTGRES_DB}
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET}
+      JWT_REFRESH_EXPIRES_IN: ${JWT_REFRESH_EXPIRES_IN}
+      CORS_ORIGIN: ${CORS_ORIGIN}
+      BLOCKCHAIN_NETWORK: ${BLOCKCHAIN_NETWORK}
+      SOLANA_RPC_URL: ${SOLANA_RPC_URL}
+      PROJECT_TREASURY_WALLET: ${PROJECT_TREASURY_WALLET}
+      PAYOUT_TOKEN_MINT: ${PAYOUT_TOKEN_MINT}
+      LOG_LEVEL: ${LOG_LEVEL}
+      LOG_FILE_PATH: logs/
+      ALLOW_DEGRADED_STARTUP: "false"
+    volumes:
+      # Uploaded datasets and extracted images are served from here by app.ts.
+      # Without a volume they are destroyed on every deploy.
+      - annotex-uploads:/app/uploads
+    ports:
+      - "127.0.0.1:5000:5000"
+
+  frontend:
+    image: ${ECR_REGISTRY}/annotex/frontend:${IMAGE_TAG}
+    restart: unless-stopped
+    logging: *default-logging
+    depends_on:
+      backend:
+        condition: service_started
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      # NEXT_PUBLIC_API_BASE_URL was already inlined into the browser bundle at
+      # build time; this is only for server-side rendering.
+      NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL}
+      NEXTAUTH_URL: ${NEXTAUTH_URL}
+      NEXTAUTH_SECRET: ${NEXTAUTH_SECRET}
+    ports:
+      - "127.0.0.1:3000:3000"
+
+volumes:
+  annotex-postgres-data:
+  annotex-uploads:
