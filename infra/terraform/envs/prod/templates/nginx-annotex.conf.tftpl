@@ -6,6 +6,24 @@ server {
     # is headroom for multipart encoding overhead.
     client_max_body_size 12M;
 
+    # NextAuth is part of the Next.js app, not the Express API: its handler is
+    # frontend/app/api/auth/[...nextauth]/route.ts. Its routes sit under
+    # /api/auth/, which the /api/ rule below would otherwise capture and send to
+    # port 5000, where every one of them 404s and sign-in fails with
+    # "Authentication failed" followed by a redirect to /api/auth/error.
+    #
+    # nginx matches the longest prefix rather than the first match, so this takes
+    # precedence over /api/ regardless of ordering. No trailing path on
+    # proxy_pass, so the full URI is forwarded unchanged.
+    location /api/auth/ {
+        proxy_pass http://localhost:3000;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
     location /api/ {
         proxy_pass http://localhost:5000/api/;
         proxy_http_version 1.1;
