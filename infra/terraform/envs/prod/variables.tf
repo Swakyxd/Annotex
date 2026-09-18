@@ -68,6 +68,12 @@ variable "github_branch" {
   default     = "main"
 }
 
+variable "github_environment" {
+  description = "GitHub Actions environment the deploy job targets. A job with an environment gets an \"environment:<name>\" subject claim instead of a \"ref:refs/heads/<branch>\" one, so both have to be trusted."
+  type        = string
+  default     = "production"
+}
+
 variable "github_oidc_sub_prefix" {
   description = <<-EOT
     Prefix of the OIDC subject claim GitHub sends, without the trailing context.
