@@ -1,0 +1,19 @@
+{
+  // Type-checks the test files, which tsconfig.json deliberately excludes so
+  // `npm run build` does not emit them into dist/.
+  //
+  // Run with: npm run typecheck:tests
+  //
+  // ts-jest now has diagnostics enabled too, so a type error fails the test run
+  // itself. This config exists so the check can also run without a database —
+  // the suites need a live Postgres, but type-checking them does not.
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": true,
+    // Tests legitimately declare fixtures they only assert on later.
+    "noUnusedLocals": false,
+    "noUnusedParameters": false
+  },
+  "include": ["src/**/*"],
+  "exclude": ["node_modules", "dist", "src/models/**/*"]
+}

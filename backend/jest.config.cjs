@@ -10,7 +10,11 @@ module.exports = {
       'ts-jest',
       {
         useESM: true,
-        diagnostics: false,
+        // Type-check test files. Previously false, which combined with the
+        // tsconfig exclude and the ESLint ignorePatterns meant test code had no
+        // static analysis at all — a typo in an assertion only surfaced as a
+        // confusing runtime failure.
+        diagnostics: true,
       },
     ],
   },

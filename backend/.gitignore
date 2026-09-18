@@ -12,6 +12,10 @@ build/
 .env
 .env.local
 .env.*.local
+# Holds a local database URL. .env.*.local does not match it, so it is listed
+# explicitly — the .example template is the committed one.
+.env.test
+!.env.test.example
 
 # Logs
 logs/
