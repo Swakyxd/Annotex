@@ -220,14 +220,32 @@ export class UserService {
   /**
    * Delete a user by ID
    */
-  async deleteUser(userId: string) {
+  async deleteUser(userId: string, requesterId: string) {
     const user = await prisma.user.findUnique({ where: { id: userId } });
     if (!user) throw new AppError('User not found', 404);
+
+    // Deleting yourself takes effect immediately while your session keeps a
+    // token for a user that no longer exists, so every later request fails and
+    // the UI looks like the data is gone rather than like an account was removed.
+    if (userId === requesterId) {
+      throw new AppError('You cannot delete your own account', 400);
+    }
+
+    // Promotion to admin is only reachable from an existing admin
+    // (authorize(UserRole.ADMIN) on every role route) and registration always
+    // assigns 'contributor', so removing the last admin locks every user out of
+    // administration permanently, recoverable only by direct database access.
+    if (user.role === UserRole.ADMIN) {
+      const admins = await prisma.user.count({ where: { role: UserRole.ADMIN } });
+      if (admins <= 1) {
+        throw new AppError('Cannot delete the last remaining admin', 400);
+      }
+    }
 
     // Ensure we delete dependent data first to avoid foreign key constraints
     await prisma.label.deleteMany({ where: { contributorId: userId } });
     await prisma.transaction.deleteMany({ where: { userId } });
-    
+
     await prisma.user.delete({ where: { id: userId } });
   }
 }

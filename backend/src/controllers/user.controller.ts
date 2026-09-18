@@ -127,7 +127,7 @@ export class UserController {
    * Delete a user by ID
    */
   deleteUser = asyncHandler(async (req: Request, res: Response) => {
-    await this.userService.deleteUser(req.params.id);
+    await this.userService.deleteUser(req.params.id, req.userId!);
 
     const response: ApiResponse = {
       success: true,
